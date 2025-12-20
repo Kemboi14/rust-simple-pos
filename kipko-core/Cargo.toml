@@ -1,0 +1,25 @@
+[package]
+name = "kipko-core"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+# Core workspace dependencies
+rust_decimal = { workspace = true }
+rust_decimal_macros = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+
+# Database dependencies
+sqlx = { workspace = true }
+
+# Testing dependencies
+proptest = { workspace = true, optional = true }
+
+[features]
+default = []
+test-utils = ["proptest"]

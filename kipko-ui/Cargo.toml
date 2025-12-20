@@ -1,0 +1,38 @@
+[package]
+name = "kipko-ui"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "kipko-ui-simple"
+path = "src/main_simple.rs"
+
+[[bin]]
+name = "kipko-ui"
+path = "src/main.rs"
+
+[dependencies]
+# Core workspace dependencies
+rust_decimal = { workspace = true }
+rust_decimal_macros = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+
+# UI dependencies
+dioxus = { workspace = true, features = ["web"] }
+
+# Web server dependencies
+axum = { workspace = true }
+tokio = { workspace = true }
+tower = { workspace = true }
+tower-http = { workspace = true }
+
+# Internal dependencies
+kipko-core = { path = "../kipko-core" }
+
+# WebAssembly dependencies
+getrandom = { version = "0.2", features = ["js"] }

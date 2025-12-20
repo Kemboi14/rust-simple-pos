@@ -1,0 +1,7 @@
+/home/nick/rust pos/target/debug/deps/dioxus-f4f4111830d7ec91.d: /home/nick/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/dioxus-0.5.6/src/lib.rs /home/nick/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/dioxus-0.5.6/src/launch.rs /home/nick/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/dioxus-0.5.6/src/../README.md
+
+/home/nick/rust pos/target/debug/deps/libdioxus-f4f4111830d7ec91.rmeta: /home/nick/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/dioxus-0.5.6/src/lib.rs /home/nick/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/dioxus-0.5.6/src/launch.rs /home/nick/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/dioxus-0.5.6/src/../README.md
+
+/home/nick/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/dioxus-0.5.6/src/lib.rs:
+/home/nick/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/dioxus-0.5.6/src/launch.rs:
+/home/nick/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/dioxus-0.5.6/src/../README.md:

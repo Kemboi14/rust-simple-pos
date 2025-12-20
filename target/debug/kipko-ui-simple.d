@@ -1,0 +1,1 @@
+/home/nick/rust\ pos/target/debug/kipko-ui-simple: /home/nick/rust\ pos/kipko-core/src/accounting.rs /home/nick/rust\ pos/kipko-core/src/lib.rs /home/nick/rust\ pos/kipko-core/src/models.rs /home/nick/rust\ pos/kipko-core/src/money.rs /home/nick/rust\ pos/kipko-core/src/tax.rs /home/nick/rust\ pos/kipko-ui/src/main_simple.rs

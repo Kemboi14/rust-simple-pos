@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kipko POS - UI Preview</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+    <div class="min-h-screen">
+        <!-- Header -->
+        <header class="bg-blue-600 text-white shadow-lg">
+            <div class="container mx-auto px-4 py-4">
+                <div class="flex justify-between items-center">
+                    <h1 class="text-2xl font-bold">Kipko POS</h1>
+                    <nav class="flex space-x-4">
+                        <button class="px-3 py-2 rounded hover:bg-blue-700">Floor Plan</button>
+                        <button class="px-3 py-2 rounded hover:bg-blue-700">Orders</button>
+                        <button class="px-3 py-2 rounded hover:bg-blue-700">Menu</button>
+                        <button class="px-3 py-2 rounded hover:bg-blue-700">Staff</button>
+                    </nav>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="container mx-auto px-4 py-8">
+            <!-- Floor Plan Page -->
+            <div id="floorplan" class="page">
+                <h2 class="text-3xl font-bold text-gray-900 mb-6">Floor Plan</h2>
+                <p class="text-gray-600 mb-6">Restaurant floor plan will be displayed here</p>
+                <div class="grid grid-cols-3 gap-4">
+                    <button class="bg-green-500 hover:bg-green-600 text-white font-bold py-4 px-6 rounded-lg">
+                        Table 1
+                    </button>
+                    <button class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-4 px-6 rounded-lg">
+                        Table 2
+                    </button>
+                    <button class="bg-green-500 hover:bg-green-600 text-white font-bold py-4 px-6 rounded-lg">
+                        Table 3
+                    </button>
+                </div>
+            </div>
+
+            <!-- Orders Page -->
+            <div id="orders" class="page hidden">
+                <h2 class="text-3xl font-bold text-gray-900 mb-6">Orders</h2>
+                <p class="text-gray-600 mb-6">Order management will be displayed here</p>
+                <button class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mb-4">
+                    New Order
+                </button>
+                <div class="space-y-4">
+                    <div class="bg-white p-4 rounded-lg shadow">
+                        <h3 class="font-semibold">Order 1</h3>
+                        <p class="text-gray-600">Table 1 - $25.50</p>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg shadow">
+                        <h3 class="font-semibold">Order 2</h3>
+                        <p class="text-gray-600">Table 2 - $18.75</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Menu Page -->
+            <div id="menu" class="page hidden">
+                <h2 class="text-3xl font-bold text-gray-900 mb-6">Menu</h2>
+                <p class="text-gray-600 mb-6">Menu items will be displayed here</p>
+                <button class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mb-4">
+                    Add Item
+                </button>
+                <div class="space-y-6">
+                    <div class="bg-white p-6 rounded-lg shadow">
+                        <h3 class="text-xl font-semibold mb-4">Appetizers</h3>
+                        <div class="space-y-2">
+                            <div class="flex justify-between">
+                                <span>Spring Rolls</span>
+                                <span>$6.99</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span>Salad</span>
+                                <span>$4.99</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow">
+                        <h3 class="text-xl font-semibold mb-4">Main Courses</h3>
+                        <div class="space-y-2">
+                            <div class="flex justify-between">
+                                <span>Grilled Chicken</span>
+                                <span>$15.99</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span>Pasta</span>
+                                <span>$12.99</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow">
+                        <h3 class="text-xl font-semibold mb-4">Desserts</h3>
+                        <div class="space-y-2">
+                            <div class="flex justify-between">
+                                <span>Ice Cream</span>
+                                <span>$4.99</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span>Cake</span>
+                                <span>$5.99</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Staff Page -->
+            <div id="staff" class="page hidden">
+                <h2 class="text-3xl font-bold text-gray-900 mb-6">Staff</h2>
+                <p class="text-gray-600 mb-6">Staff management will be displayed here</p>
+                <button class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mb-4">
+                    Add Staff Member
+                </button>
+                <div class="space-y-4">
+                    <div class="bg-white p-4 rounded-lg shadow">
+                        <h3 class="font-semibold">John Doe</h3>
+                        <p class="text-gray-600">Manager</p>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg shadow">
+                        <h3 class="font-semibold">Jane Smith</h3>
+                        <p class="text-gray-600">Server</p>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg shadow">
+                        <h3 class="font-semibold">Mike Johnson</h3>
+                        <p class="text-gray-600">Kitchen</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Simple page switching
+        const pages = {
+            'Floor Plan': 'floorplan',
+            'Orders': 'orders', 
+            'Menu': 'menu',
+            'Staff': 'staff'
+        };
+
+        document.querySelectorAll('nav button').forEach(button => {
+            button.addEventListener('click', () => {
+                const pageName = button.textContent;
+                const pageId = pages[pageName];
+                
+                // Hide all pages
+                document.querySelectorAll('.page').forEach(page => {
+                    page.classList.add('hidden');
+                });
+                
+                // Show selected page
+                document.getElementById(pageId).classList.remove('hidden');
+                
+                // Update button styles
+                document.querySelectorAll('nav button').forEach(btn => {
+                    btn.classList.remove('bg-blue-700');
+                });
+                button.classList.add('bg-blue-700');
+            });
+        });
+
+        // Set initial active button
+        document.querySelector('nav button').classList.add('bg-blue-700');
+    </script>
+</body>
+</html>

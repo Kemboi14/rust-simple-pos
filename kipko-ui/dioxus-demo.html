@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kipko POS - Dioxus UI</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState } = React;
+
+        // Floor Plan Component
+        const FloorPlan = () => (
+            <div>
+                <h2 className="text-3xl font-bold text-gray-900 mb-6">Floor Plan</h2>
+                <p className="text-gray-600 mb-6">Restaurant floor plan will be displayed here</p>
+                <div className="grid grid-cols-3 gap-4">
+                    <button className="bg-green-500 hover:bg-green-600 text-white font-bold py-4 px-6 rounded-lg">
+                        Table 1
+                    </button>
+                    <button className="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-4 px-6 rounded-lg">
+                        Table 2
+                    </button>
+                    <button className="bg-green-500 hover:bg-green-600 text-white font-bold py-4 px-6 rounded-lg">
+                        Table 3
+                    </button>
+                </div>
+            </div>
+        );
+
+        // Orders Component
+        const Orders = () => (
+            <div>
+                <h2 className="text-3xl font-bold text-gray-900 mb-6">Orders</h2>
+                <p className="text-gray-600 mb-6">Order management will be displayed here</p>
+                <button className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mb-4">
+                    New Order
+                </button>
+                <div className="space-y-4">
+                    <div className="bg-white p-4 rounded-lg shadow">
+                        <h3 className="font-semibold">Order 1</h3>
+                        <p className="text-gray-600">Table 1 - $25.50</p>
+                    </div>
+                    <div className="bg-white p-4 rounded-lg shadow">
+                        <h3 className="font-semibold">Order 2</h3>
+                        <p className="text-gray-600">Table 2 - $18.75</p>
+                    </div>
+                </div>
+            </div>
+        );
+
+        // Menu Component
+        const Menu = () => (
+            <div>
+                <h2 className="text-3xl font-bold text-gray-900 mb-6">Menu</h2>
+                <p className="text-gray-600 mb-6">Menu items will be displayed here</p>
+                <button className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mb-4">
+                    Add Item
+                </button>
+                <div className="space-y-6">
+                    <div className="bg-white p-6 rounded-lg shadow">
+                        <h3 className="text-xl font-semibold mb-4">Appetizers</h3>
+                        <div className="space-y-2">
+                            <div className="flex justify-between">
+                                <span>Spring Rolls</span>
+                                <span>$6.99</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span>Salad</span>
+                                <span>$4.99</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="bg-white p-6 rounded-lg shadow">
+                        <h3 className="text-xl font-semibold mb-4">Main Courses</h3>
+                        <div className="space-y-2">
+                            <div className="flex justify-between">
+                                <span>Grilled Chicken</span>
+                                <span>$15.99</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span>Pasta</span>
+                                <span>$12.99</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="bg-white p-6 rounded-lg shadow">
+                        <h3 className="text-xl font-semibold mb-4">Desserts</h3>
+                        <div className="space-y-2">
+                            <div className="flex justify-between">
+                                <span>Ice Cream</span>
+                                <span>$4.99</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span>Cake</span>
+                                <span>$5.99</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+
+        // Staff Component
+        const Staff = () => (
+            <div>
+                <h2 className="text-3xl font-bold text-gray-900 mb-6">Staff</h2>
+                <p className="text-gray-600 mb-6">Staff management will be displayed here</p>
+                <button className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mb-4">
+                    Add Staff Member
+                </button>
+                <div className="space-y-4">
+                    <div className="bg-white p-4 rounded-lg shadow">
+                        <h3 className="font-semibold">John Doe</h3>
+                        <p className="text-gray-600">Manager</p>
+                    </div>
+                    <div className="bg-white p-4 rounded-lg shadow">
+                        <h3 className="font-semibold">Jane Smith</h3>
+                        <p className="text-gray-600">Server</p>
+                    </div>
+                    <div className="bg-white p-4 rounded-lg shadow">
+                        <h3 className="font-semibold">Mike Johnson</h3>
+                        <p className="text-gray-600">Kitchen</p>
+                    </div>
+                </div>
+            </div>
+        );
+
+        // Main App Component
+        const App = () => {
+            const [currentPage, setCurrentPage] = useState('floorplan');
+
+            const pages = {
+                floorplan: <FloorPlan />,
+                orders: <Orders />,
+                menu: <Menu />,
+                staff: <Staff />
+            };
+
+            return (
+                <div className="min-h-screen bg-gray-100">
+                    {/* Header */}
+                    <header className="bg-blue-600 text-white shadow-lg">
+                        <div className="container mx-auto px-4 py-4">
+                            <div className="flex justify-between items-center">
+                                <h1 className="text-2xl font-bold">Kipko POS</h1>
+                                <nav className="flex space-x-4">
+                                    {Object.keys(pages).map(page => (
+                                        <button
+                                            key={page}
+                                            className={`px-3 py-2 rounded hover:bg-blue-700 ${
+                                                currentPage === page ? 'bg-blue-700' : ''
+                                            }`}
+                                            onClick={() => setCurrentPage(page)}
+                                        >
+                                            {page.charAt(0).toUpperCase() + page.slice(1)}
+                                        </button>
+                                    ))}
+                                </nav>
+                            </div>
+                        </div>
+                    </header>
+
+                    {/* Main Content */}
+                    <main className="container mx-auto px-4 py-8">
+                        {pages[currentPage]}
+                    </main>
+                </div>
+            );
+        };
+
+        // Render the app
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>

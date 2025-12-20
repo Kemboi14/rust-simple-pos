@@ -1,0 +1,12 @@
+/home/nick/rust pos/target/debug/deps/krates-90d482c6a39b86ff.d: /home/nick/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/krates-0.16.10/src/lib.rs /home/nick/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/krates-0.16.10/src/builder.rs /home/nick/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/krates-0.16.10/src/builder/features.rs /home/nick/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/krates-0.16.10/src/builder/index.rs /home/nick/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/krates-0.16.10/src/errors.rs /home/nick/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/krates-0.16.10/src/pkgspec.rs
+
+/home/nick/rust pos/target/debug/deps/libkrates-90d482c6a39b86ff.rlib: /home/nick/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/krates-0.16.10/src/lib.rs /home/nick/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/krates-0.16.10/src/builder.rs /home/nick/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/krates-0.16.10/src/builder/features.rs /home/nick/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/krates-0.16.10/src/builder/index.rs /home/nick/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/krates-0.16.10/src/errors.rs /home/nick/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/krates-0.16.10/src/pkgspec.rs
+
+/home/nick/rust pos/target/debug/deps/libkrates-90d482c6a39b86ff.rmeta: /home/nick/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/krates-0.16.10/src/lib.rs /home/nick/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/krates-0.16.10/src/builder.rs /home/nick/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/krates-0.16.10/src/builder/features.rs /home/nick/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/krates-0.16.10/src/builder/index.rs /home/nick/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/krates-0.16.10/src/errors.rs /home/nick/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/krates-0.16.10/src/pkgspec.rs
+
+/home/nick/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/krates-0.16.10/src/lib.rs:
+/home/nick/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/krates-0.16.10/src/builder.rs:
+/home/nick/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/krates-0.16.10/src/builder/features.rs:
+/home/nick/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/krates-0.16.10/src/builder/index.rs:
+/home/nick/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/krates-0.16.10/src/errors.rs:
+/home/nick/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/krates-0.16.10/src/pkgspec.rs:
