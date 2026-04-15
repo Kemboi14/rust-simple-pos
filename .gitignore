@@ -1,0 +1,5 @@
+/target/
+**/target/
+# Dioxus build output (if any)
+/dist/
+**/dist/

@@ -36,3 +36,10 @@ kipko-core = { path = "../kipko-core" }
 
 # WebAssembly dependencies
 getrandom = { version = "0.2", features = ["js"] }
+
+# HTTP client
+reqwest = { version = "0.11", features = ["json"] }
+
+# QR code generation
+qrcode = "0.14"
+base64 = "0.21"

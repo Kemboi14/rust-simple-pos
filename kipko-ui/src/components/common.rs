@@ -184,3 +184,34 @@ pub enum BadgeSize {
     Medium,
     Large,
 }
+
+#[component]
+pub fn QRCodeDisplay(
+    data: String,
+    size: Option<u32>,
+    title: Option<String>,
+    description: Option<String>,
+) -> Element {
+    let size = size.unwrap_or(200);
+    let qr_data = crate::utils::generate_qr_code(&data, size).unwrap_or_default();
+    
+    rsx! {
+        div { class: "flex flex-col items-center space-y-4",
+            if let Some(t) = title {
+                h3 { class: "text-lg font-semibold text-gray-900", "{t}" }
+            }
+            div { class: "bg-white p-4 rounded-lg shadow-md",
+                img {
+                    src: "{qr_data}",
+                    alt: "QR Code",
+                    class: "w-{size}px h-{size}px",
+                    width: "{size}",
+                    height: "{size}"
+                }
+            }
+            if let Some(desc) = description {
+                p { class: "text-sm text-gray-600 text-center", "{desc}" }
+            }
+        }
+    }
+}

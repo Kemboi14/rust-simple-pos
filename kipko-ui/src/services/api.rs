@@ -2,20 +2,33 @@
 //! 
 //! This service handles communication with the kipko-server REST API.
 
-use std::collections::HashMap;
-use kipko_core::models::*;
+use kipko_core::{Table, TableStatus, Order, OrderStatus, OrderItem, MenuItem, MenuItemCategory, Staff, StaffRole};
 
 #[derive(Clone)]
-pub struct ApiService;
+pub struct ApiService {
+    base_url: String,
+}
+
+impl Default for ApiService {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl ApiService {
-    const BASE_URL: &'static str = "http://localhost:8080/api/v1";
+    pub fn new() -> Self {
+        Self {
+            base_url: std::env::var("API_BASE_URL")
+                .unwrap_or_else(|_| "http://localhost:8080".to_string()),
+        }
+    }
 
     // Tables API
-    pub async fn get_tables() -> Result<Vec<Table>, String> {
-        let url = format!("{}/tables", Self::BASE_URL);
+    pub async fn get_tables(&self) -> Result<Vec<Table>, String> {
+        let _url = format!("{}/tables", self.base_url);
         
         // For now, return mock data until we implement proper HTTP client
+        // TODO: Replace with actual HTTP call using reqwest
         Ok(vec![
             Table {
                 id: uuid::Uuid::new_v4(),
@@ -53,30 +66,52 @@ impl ApiService {
                 created_at: chrono::Utc::now(),
                 updated_at: chrono::Utc::now(),
             },
+            Table {
+                id: uuid::Uuid::new_v4(),
+                number: 5,
+                capacity: 8,
+                location: Some("Patio".to_string()),
+                status: TableStatus::Empty,
+                created_at: chrono::Utc::now(),
+                updated_at: chrono::Utc::now(),
+            },
+            Table {
+                id: uuid::Uuid::new_v4(),
+                number: 6,
+                capacity: 4,
+                location: Some("Bar".to_string()),
+                status: TableStatus::Empty,
+                created_at: chrono::Utc::now(),
+                updated_at: chrono::Utc::now(),
+            },
         ])
     }
 
-    pub async fn occupy_table(table_id: uuid::Uuid) -> Result<(), String> {
-        // TODO: Implement actual API call
-        println!("Occupy table: {}", table_id);
+    pub async fn occupy_table(&self, table_id: uuid::Uuid) -> Result<(), String> {
+        let _url = format!("{}/tables/{}/occupy", self.base_url, table_id);
+        // TODO: Implement actual HTTP call
+        println!("Occupy table: {} at {}", table_id, _url);
         Ok(())
     }
 
-    pub async fn clear_table(table_id: uuid::Uuid) -> Result<(), String> {
-        // TODO: Implement actual API call
-        println!("Clear table: {}", table_id);
+    pub async fn clear_table(&self, table_id: uuid::Uuid) -> Result<(), String> {
+        let _url = format!("{}/tables/{}/clear", self.base_url, table_id);
+        // TODO: Implement actual HTTP call
+        println!("Clear table: {} at {}", table_id, _url);
         Ok(())
     }
 
-    pub async fn clean_table(table_id: uuid::Uuid) -> Result<(), String> {
-        // TODO: Implement actual API call
-        println!("Clean table: {}", table_id);
+    pub async fn clean_table(&self, table_id: uuid::Uuid) -> Result<(), String> {
+        let _url = format!("{}/tables/{}/clean", self.base_url, table_id);
+        // TODO: Implement actual HTTP call
+        println!("Clean table: {} at {}", table_id, _url);
         Ok(())
     }
 
     // Orders API
-    pub async fn get_orders() -> Result<Vec<Order>, String> {
-        // TODO: Implement actual API call
+    pub async fn get_orders(&self) -> Result<Vec<Order>, String> {
+        let _url = format!("{}/orders", self.base_url);
+        // TODO: Implement actual HTTP call
         Ok(vec![
             Order {
                 id: uuid::Uuid::new_v4(),
@@ -89,15 +124,27 @@ impl ApiService {
                 created_at: chrono::Utc::now(),
                 updated_at: chrono::Utc::now(),
             },
+            Order {
+                id: uuid::Uuid::new_v4(),
+                table_id: uuid::Uuid::new_v4(),
+                staff_id: uuid::Uuid::new_v4(),
+                status: OrderStatus::Closed,
+                subtotal: kipko_core::money::Money::new(rust_decimal::Decimal::new(1800, 2), "USD".to_string()).unwrap(),
+                tax_amount: kipko_core::money::Money::new(rust_decimal::Decimal::new(144, 2), "USD".to_string()).unwrap(),
+                total_amount: kipko_core::money::Money::new(rust_decimal::Decimal::new(1944, 2), "USD".to_string()).unwrap(),
+                created_at: chrono::Utc::now(),
+                updated_at: chrono::Utc::now(),
+            },
         ])
     }
 
-    pub async fn create_order(table_id: Option<uuid::Uuid>, staff_id: Option<uuid::Uuid>) -> Result<Order, String> {
-        // TODO: Implement actual API call
+    pub async fn create_order(&self, table_id: uuid::Uuid, staff_id: uuid::Uuid) -> Result<Order, String> {
+        let _url = format!("{}/orders", self.base_url);
+        // TODO: Implement actual HTTP call
         Ok(Order {
             id: uuid::Uuid::new_v4(),
-            table_id: table_id.unwrap_or(uuid::Uuid::new_v4()),
-            staff_id: staff_id.unwrap_or(uuid::Uuid::new_v4()),
+            table_id,
+            staff_id,
             status: OrderStatus::Open,
             subtotal: kipko_core::money::Money::new(rust_decimal::Decimal::ZERO, "USD".to_string()).unwrap(),
             tax_amount: kipko_core::money::Money::new(rust_decimal::Decimal::ZERO, "USD".to_string()).unwrap(),
@@ -107,8 +154,9 @@ impl ApiService {
         })
     }
 
-    pub async fn get_order_items(order_id: uuid::Uuid) -> Result<Vec<OrderItem>, String> {
-        // TODO: Implement actual API call
+    pub async fn get_order_items(&self, order_id: uuid::Uuid) -> Result<Vec<OrderItem>, String> {
+        let _url = format!("{}/orders/{}/items", self.base_url, order_id);
+        // TODO: Implement actual HTTP call
         Ok(vec![
             OrderItem {
                 id: uuid::Uuid::new_v4(),
@@ -126,15 +174,17 @@ impl ApiService {
         ])
     }
 
-    pub async fn close_order(order_id: uuid::Uuid) -> Result<(), String> {
-        // TODO: Implement actual API call
-        println!("Close order: {}", order_id);
+    pub async fn close_order(&self, order_id: uuid::Uuid) -> Result<(), String> {
+        let _url = format!("{}/orders/{}/close", self.base_url, order_id);
+        // TODO: Implement actual HTTP call
+        println!("Close order: {} at {}", order_id, _url);
         Ok(())
     }
 
     // Menu API
-    pub async fn get_menu_categories() -> Result<Vec<MenuItemCategory>, String> {
-        // TODO: Implement actual API call
+    pub async fn get_menu_categories(&self) -> Result<Vec<MenuItemCategory>, String> {
+        let _url = format!("{}/menu/categories", self.base_url);
+        // TODO: Implement actual HTTP call
         Ok(vec![
             MenuItemCategory {
                 id: uuid::Uuid::new_v4(),
@@ -154,17 +204,26 @@ impl ApiService {
             },
             MenuItemCategory {
                 id: uuid::Uuid::new_v4(),
+                name: "Beverages".to_string(),
+                description: Some("Refreshing drinks and beverages".to_string()),
+                display_order: 3,
+                created_at: chrono::Utc::now(),
+                updated_at: chrono::Utc::now(),
+            },
+            MenuItemCategory {
+                id: uuid::Uuid::new_v4(),
                 name: "Desserts".to_string(),
                 description: Some("Sweet endings to your meal".to_string()),
-                display_order: 3,
+                display_order: 4,
                 created_at: chrono::Utc::now(),
                 updated_at: chrono::Utc::now(),
             },
         ])
     }
 
-    pub async fn get_menu_items() -> Result<Vec<MenuItem>, String> {
-        // TODO: Implement actual API call
+    pub async fn get_menu_items(&self) -> Result<Vec<MenuItem>, String> {
+        let _url = format!("{}/menu/items", self.base_url);
+        // TODO: Implement actual HTTP call
         Ok(vec![
             MenuItem {
                 id: uuid::Uuid::new_v4(),
@@ -205,12 +264,26 @@ impl ApiService {
                 created_at: chrono::Utc::now(),
                 updated_at: chrono::Utc::now(),
             },
+            MenuItem {
+                id: uuid::Uuid::new_v4(),
+                category_id: uuid::Uuid::new_v4(),
+                name: "House Burger".to_string(),
+                description: Some("Angus beef patty with lettuce, tomato, and special sauce".to_string()),
+                price: kipko_core::money::Money::new(rust_decimal::Decimal::new(1499, 2), "USD".to_string()).unwrap(),
+                tax_rate: rust_decimal::Decimal::new(8, 2),
+                is_available: true,
+                preparation_time_minutes: Some(15),
+                display_order: 2,
+                created_at: chrono::Utc::now(),
+                updated_at: chrono::Utc::now(),
+            },
         ])
     }
 
     // Staff API
-    pub async fn get_staff() -> Result<Vec<Staff>, String> {
-        // TODO: Implement actual API call
+    pub async fn get_staff(&self) -> Result<Vec<Staff>, String> {
+        let _url = format!("{}/staff", self.base_url);
+        // TODO: Implement actual HTTP call
         Ok(vec![
             Staff {
                 id: uuid::Uuid::new_v4(),
@@ -235,6 +308,15 @@ impl ApiService {
                 name: "Mike Johnson".to_string(),
                 email: "mike@kipko.com".to_string(),
                 role: StaffRole::Kitchen,
+                is_active: true,
+                created_at: chrono::Utc::now(),
+                updated_at: chrono::Utc::now(),
+            },
+            Staff {
+                id: uuid::Uuid::new_v4(),
+                name: "Sarah Williams".to_string(),
+                email: "sarah@kipko.com".to_string(),
+                role: StaffRole::Host,
                 is_active: true,
                 created_at: chrono::Utc::now(),
                 updated_at: chrono::Utc::now(),
