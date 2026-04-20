@@ -59,7 +59,8 @@ pub fn Menu() -> Element {
 
             {let cat_data = categories_data();
             if let Some(category_list) = cat_data.as_ref() {
-                if category_list.is_empty() {
+                let cats = category_list.clone();
+                if cats.is_empty() {
                     rsx! {
                         div { class: "text-center py-12 p-4 bg-white rounded-lg shadow",
                             p { class: "text-gray-500", "No categories found" }
@@ -73,12 +74,15 @@ pub fn Menu() -> Element {
                                 onclick: move |_| selected_category.set(None),
                                 children: rsx! { "All Categories" }
                             }
-                            for category in category_list {
-                                Button {
-                                    variant: if *selected_category.read() == Some(category.id) { ButtonVariant::Primary } else { ButtonVariant::Outline },
-                                    onclick: move |_| selected_category.set(Some(category.id)),
-                                    children: rsx! { "{category.name}" }
-                                }
+                            for category in cats.clone() {
+                                {let cat_id = category.id;
+                                rsx! {
+                                    Button {
+                                        variant: if selected_category() == Some(cat_id) { ButtonVariant::Primary } else { ButtonVariant::Outline },
+                                        onclick: move |_| selected_category.set(Some(cat_id)),
+                                        children: rsx! { "{category.name}" }
+                                    }
+                                }}
                             }
                         }
                     }
@@ -98,13 +102,14 @@ pub fn Menu() -> Element {
                     } else {
                         rsx! {
                             div { class: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6",
-                                for item in item_list {
-                                    {let category = category_list.iter().find(|c| c.id == item.category_id).cloned();
+                                for item in item_list.clone() {
+                                    {let item_id = item.id;
+                                    let category = category_list.iter().find(|c| c.id == item.category_id).cloned();
                                     rsx! {
                                         div {
                                             class: "cursor-pointer hover:shadow-lg transition-shadow p-4 bg-white rounded-lg shadow",
                                             onclick: move |_| {
-                                                selected_item.set(Some(item.id));
+                                                selected_item.set(Some(item_id));
                                                 show_details.set(true);
                                             },
                                             MenuItemCardContent { item: item.clone(), category }
@@ -114,7 +119,7 @@ pub fn Menu() -> Element {
                             }
                         }
                     }
-                }
+                } else { rsx! {} }
             } else { rsx! {} }}
 
             {let show = *show_details.read();
@@ -123,9 +128,11 @@ pub fn Menu() -> Element {
             let cat_data3 = categories_data();
             if show {
                 if let Some(selected_id) = sel_id {
-                    if let Some((item, category)) = item_data2.as_ref()
-                        .and_then(|l| l.iter().find(|i| i.id == selected_id).cloned())
-                        .map(|i| (i, cat_data3.as_ref().and_then(|c| c.iter().find(|cat| cat.id == i.category_id).cloned()))) {
+                    let maybe_item = item_data2.as_ref()
+                        .and_then(|l| l.iter().find(|i| i.id == selected_id).cloned());
+                    if let Some(item) = maybe_item {
+                        let category = cat_data3.as_ref()
+                            .and_then(|c| c.iter().find(|cat| cat.id == item.category_id).cloned());
                         rsx! {
                             MenuItemDetails {
                                 item: item,

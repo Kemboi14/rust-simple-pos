@@ -3,7 +3,7 @@
 use dioxus::prelude::*;
 use kipko_core::{Order, OrderStatus};
 use crate::services::ApiService;
-use crate::components::{Button, ButtonVariant, Badge, BadgeVariant, QRCodeDisplay};
+use crate::components::{Button, ButtonVariant, Badge, BadgeVariant};
 
 #[component]
 pub fn Orders() -> Element {
@@ -47,7 +47,8 @@ pub fn Orders() -> Element {
 
             {let data = orders_data();
             if let Some(order_list) = data.as_ref() {
-                if order_list.is_empty() {
+                let list = order_list.clone();
+                if list.is_empty() {
                     rsx! {
                         div { class: "text-center py-12 p-4 bg-white rounded-lg shadow",
                             p { class: "text-gray-500", "No orders found" }
@@ -61,14 +62,15 @@ pub fn Orders() -> Element {
                 } else {
                     rsx! {
                         div { class: "space-y-4",
-                            for order in order_list {
-                                {let sel = *selected_order.read() == Some(order.id);
+                            for order in list.clone() {
+                                {let order_id = order.id;
+                                let sel = selected_order() == Some(order_id);
                                 let cls = if sel { "cursor-pointer hover:shadow-lg transition-shadow p-4 bg-white rounded-lg shadow ring-2 ring-blue-500" } else { "cursor-pointer hover:shadow-lg transition-shadow p-4 bg-white rounded-lg shadow" };
                                 rsx! {
                                     div {
                                         class: "{cls}",
                                         onclick: move |_| {
-                                            selected_order.set(Some(order.id));
+                                            selected_order.set(Some(order_id));
                                             show_details.set(true);
                                         },
                                         OrderCardContent { order: order.clone() }
@@ -151,7 +153,7 @@ fn OrderDetails(
         OrderStatus::Closed => "Closed",
         OrderStatus::Cancelled => "Cancelled",
     };
-    let mut show_qr = use_signal(|| false);
+    let _show_qr = use_signal(|| false);
     let order_id = order.id.to_string();
     let short_id = &order_id[..8.min(order_id.len())];
 

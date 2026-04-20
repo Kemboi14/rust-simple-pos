@@ -3,7 +3,7 @@
 use dioxus::prelude::*;
 use kipko_core::{Table, TableStatus};
 use crate::services::ApiService;
-use crate::components::{Card, Button, ButtonVariant, Badge, BadgeVariant, QRCodeDisplay};
+use crate::components::{Button, ButtonVariant, Badge, BadgeVariant, QRCodeDisplay};
 
 #[component]
 pub fn FloorPlan() -> Element {
@@ -21,8 +21,6 @@ pub fn FloorPlan() -> Element {
     
     // Cache the tables data for use in RSX
     let tables_data = use_memo(move || tables.read().clone());
-    let show_details_val = use_memo(move || *show_details.read());
-    let selected_id_val = use_memo(move || *selected_table.read());
 
     rsx! {
         div { class: "min-h-screen bg-gray-100",
@@ -45,24 +43,40 @@ pub fn FloorPlan() -> Element {
                 }
             }
 
-            // Table grid
-            if let Some(table_list) = tables_data().as_ref() {
-                TableSection {
-                    title: "All Tables".to_string(),
-                    tables: table_list.clone(),
-                    selected_table: selected_table(),
-                    on_select: move |id| {
-                        selected_table.set(Some(id));
-                        show_details.set(true);
+            // Table grid - render inline to avoid lifetime issues
+            {let data = tables_data();
+            if let Some(table_list) = data.as_ref() {
+                let list = table_list.clone();
+                let sel_table = *selected_table.read();
+                rsx! {
+                    div { class: "bg-white rounded-lg shadow-md p-6",
+                        h3 { class: "text-lg font-semibold text-gray-900 mb-4", "All Tables" }
+                        div { class: "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4",
+                            for table in list.clone() {
+                                TableComponent {
+                                    table: table.clone(),
+                                    selected: sel_table == Some(table.id),
+                                    onclick: move |_| {
+                                        selected_table.set(Some(table.id));
+                                        show_details.set(true);
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
+            } else { rsx! {} }}
 
-                // Table details panel
-                if show_details_val() {
-                    if let Some(selected_id) = selected_id_val() {
-                        if let Some(table) = table_list.iter().find(|t| t.id == selected_id) {
+            // Table details panel
+            {let show = *show_details.read();
+            let sel_id = *selected_table.read();
+            let data2 = tables_data();
+            if show {
+                if let Some(selected_id) = sel_id {
+                    if let Some(table) = data2.as_ref().and_then(|l| l.iter().find(|t| t.id == selected_id)).cloned() {
+                        rsx! {
                             TableDetails {
-                                table: table.clone(),
+                                table: table,
                                 on_close: move |_| {
                                     show_details.set(false);
                                     selected_table.set(None);
@@ -84,33 +98,9 @@ pub fn FloorPlan() -> Element {
                                 }
                             }
                         }
-                    }
-                }
-            }
-        }
-    }
-}
-
-#[component]
-fn TableSection(
-    title: String,
-    tables: Vec<Table>,
-    selected_table: Option<uuid::Uuid>,
-    on_select: EventHandler<uuid::Uuid>,
-) -> Element {
-    rsx! {
-        Card {
-            padding: crate::components::CardPadding::Medium,
-            h3 { class: "text-lg font-semibold text-gray-900 mb-4", "{title}" }
-            div { class: "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4",
-                for table in tables.iter() {
-                    TableComponent {
-                        table: table.clone(),
-                        selected: selected_table == Some(table.id),
-                        onclick: move |_| on_select(table.id)
-                    }
-                }
-            }
+                    } else { rsx! {} }
+                } else { rsx! {} }
+            } else { rsx! {} }}
         }
     }
 }
@@ -163,8 +153,7 @@ fn TableDetails(
 
     rsx! {
         div { class: "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50",
-            Card {
-                class: "max-w-md w-full mx-4",
+            div { class: "bg-white rounded-lg shadow-md max-w-md w-full mx-4 p-6",
                 div { class: "flex justify-between items-start mb-4",
                     h3 { class: "text-xl font-bold text-gray-900", "Table {table.number}" }
                     button {

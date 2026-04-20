@@ -61,17 +61,18 @@ pub fn Staff() -> Element {
                 } else {
                     rsx! {
                         div { class: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6",
-                            for member in staff_list {
+                            for member in staff_list.clone() {
+                                {let member_id = member.id;
                                 rsx! {
                                     div {
                                         class: "cursor-pointer hover:shadow-lg transition-shadow p-4 bg-white rounded-lg shadow",
                                         onclick: move |_| {
-                                            selected_staff.set(Some(member.id));
+                                            selected_staff.set(Some(member_id));
                                             show_details.set(true);
                                         },
                                         StaffCardContent { staff: member.clone() }
                                     }
-                                }
+                                }}
                             }
                         }
                     }

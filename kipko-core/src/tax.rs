@@ -28,7 +28,8 @@ pub enum TaxError {
 pub type TaxResult<T> = Result<T, TaxError>;
 
 /// Tax jurisdiction (e.g., state, city, special district)
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, sqlx::FromRow)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "db", derive(sqlx::FromRow))]
 pub struct TaxJurisdiction {
     pub id: Uuid,
     pub name: String,
@@ -68,8 +69,9 @@ impl TaxJurisdiction {
 }
 
 /// Tax exemption type
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, sqlx::Type)]
-#[sqlx(type_name = "text")]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "db", derive(sqlx::Type))]
+#[cfg_attr(feature = "db", sqlx(type_name = "text"))]
 pub enum TaxExemptionType {
     NonProfit,
     Government,
@@ -80,7 +82,8 @@ pub enum TaxExemptionType {
 }
 
 /// Tax exemption
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, sqlx::FromRow)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "db", derive(sqlx::FromRow))]
 pub struct TaxExemption {
     pub id: Uuid,
     pub name: String,

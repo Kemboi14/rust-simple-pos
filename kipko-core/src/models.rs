@@ -9,8 +9,9 @@ use uuid::Uuid;
 use chrono::{DateTime, Utc};
 
 /// Table status enumeration
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, sqlx::Type)]
-#[sqlx(type_name = "text")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[cfg_attr(feature = "db", derive(sqlx::Type))]
+#[cfg_attr(feature = "db", sqlx(type_name = "text"))]
 pub enum TableStatus {
     Empty,
     Occupied,
@@ -25,7 +26,8 @@ impl Default for TableStatus {
 }
 
 /// Restaurant table
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, sqlx::FromRow)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "db", derive(sqlx::FromRow))]
 pub struct Table {
     pub id: Uuid,
     pub number: i32,
@@ -85,8 +87,9 @@ impl Table {
 }
 
 /// Order item status
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, sqlx::Type)]
-#[sqlx(type_name = "text")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[cfg_attr(feature = "db", derive(sqlx::Type))]
+#[cfg_attr(feature = "db", sqlx(type_name = "text"))]
 pub enum OrderItemStatus {
     Pending,
     Fired,    // Sent to kitchen
@@ -96,7 +99,8 @@ pub enum OrderItemStatus {
 }
 
 /// Order item
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, sqlx::FromRow)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "db", derive(sqlx::FromRow))]
 pub struct OrderItem {
     pub id: Uuid,
     pub order_id: Uuid,
@@ -159,8 +163,9 @@ impl OrderItem {
 }
 
 /// Order status
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, sqlx::Type)]
-#[sqlx(type_name = "text")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[cfg_attr(feature = "db", derive(sqlx::Type))]
+#[cfg_attr(feature = "db", sqlx(type_name = "text"))]
 pub enum OrderStatus {
     Open,
     Closed,
@@ -168,7 +173,8 @@ pub enum OrderStatus {
 }
 
 /// Order
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, sqlx::FromRow)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "db", derive(sqlx::FromRow))]
 pub struct Order {
     pub id: Uuid,
     pub table_id: Uuid,
@@ -235,7 +241,8 @@ impl Order {
 }
 
 /// Menu item category
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, sqlx::FromRow)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "db", derive(sqlx::FromRow))]
 pub struct MenuItemCategory {
     pub id: Uuid,
     pub name: String,
@@ -246,7 +253,8 @@ pub struct MenuItemCategory {
 }
 
 /// Menu item
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, sqlx::FromRow)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "db", derive(sqlx::FromRow))]
 pub struct MenuItem {
     pub id: Uuid,
     pub category_id: Uuid,
@@ -291,7 +299,8 @@ impl MenuItem {
 }
 
 /// Staff member
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, sqlx::FromRow)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "db", derive(sqlx::FromRow))]
 pub struct Staff {
     pub id: Uuid,
     pub name: String,
@@ -303,8 +312,9 @@ pub struct Staff {
 }
 
 /// Staff role
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, sqlx::Type)]
-#[sqlx(type_name = "text")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[cfg_attr(feature = "db", derive(sqlx::Type))]
+#[cfg_attr(feature = "db", sqlx(type_name = "text"))]
 pub enum StaffRole {
     Server,
     Manager,
@@ -314,8 +324,9 @@ pub enum StaffRole {
 }
 
 /// Payment method
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, sqlx::Type)]
-#[sqlx(type_name = "text")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[cfg_attr(feature = "db", derive(sqlx::Type))]
+#[cfg_attr(feature = "db", sqlx(type_name = "text"))]
 pub enum PaymentMethod {
     Cash,
     Card,
@@ -324,7 +335,8 @@ pub enum PaymentMethod {
 }
 
 /// Payment
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, sqlx::FromRow)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "db", derive(sqlx::FromRow))]
 pub struct Payment {
     pub id: Uuid,
     pub order_id: Uuid,

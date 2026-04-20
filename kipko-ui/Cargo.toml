@@ -17,7 +17,7 @@ rust_decimal = { workspace = true }
 rust_decimal_macros = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-uuid = { workspace = true }
+uuid = { workspace = true, features = ["js"] }
 chrono = { workspace = true }
 thiserror = { workspace = true }
 anyhow = { workspace = true }
@@ -25,17 +25,20 @@ anyhow = { workspace = true }
 # UI dependencies
 dioxus = { workspace = true, features = ["web"] }
 
-# Web server dependencies
-axum = { workspace = true }
-tokio = { workspace = true }
-tower = { workspace = true }
-tower-http = { workspace = true }
+# Web server dependencies (only for native builds, not WASM)
+axum = { workspace = true, optional = true }
+tokio = { workspace = true, optional = true }
+tower = { workspace = true, optional = true }
+tower-http = { workspace = true, optional = true }
 
 # Internal dependencies
 kipko-core = { path = "../kipko-core" }
 
 # WebAssembly dependencies
 getrandom = { version = "0.2", features = ["js"] }
+wasm-bindgen-futures = "0.4"
+# Force ahash to use older version compatible with getrandom 0.2
+ahash = { version = "=0.8.7", default-features = false, features = ["runtime-rng"] }
 
 # HTTP client
 reqwest = { version = "0.11", features = ["json"] }
@@ -43,3 +46,7 @@ reqwest = { version = "0.11", features = ["json"] }
 # QR code generation
 qrcode = "0.14"
 base64 = "0.21"
+
+[features]
+default = ["server"]
+server = ["axum", "tokio", "tower", "tower-http"]

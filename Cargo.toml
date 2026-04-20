@@ -32,4 +32,3 @@ dioxus-desktop = "0.5"
 
 # Testing dependencies
 proptest = "1.4"
-getrandom = { version = "0.2", features = ["js"] }

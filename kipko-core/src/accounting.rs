@@ -26,8 +26,9 @@ pub enum AccountingError {
 pub type AccountingResult<T> = Result<T, AccountingError>;
 
 /// Account types for classification
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, sqlx::Type)]
-#[sqlx(type_name = "text")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[cfg_attr(feature = "db", derive(sqlx::Type))]
+#[cfg_attr(feature = "db", sqlx(type_name = "text"))]
 pub enum AccountType {
     Asset,
     Liability,
@@ -47,15 +48,17 @@ impl AccountType {
 }
 
 /// Debit or Credit indicator
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, sqlx::Type)]
-#[sqlx(type_name = "text")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[cfg_attr(feature = "db", derive(sqlx::Type))]
+#[cfg_attr(feature = "db", sqlx(type_name = "text"))]
 pub enum DebitCredit {
     Debit,
     Credit,
 }
 
 /// Account in the chart of accounts
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, sqlx::FromRow)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "db", derive(sqlx::FromRow))]
 pub struct Account {
     pub id: Uuid,
     pub name: String,
@@ -82,7 +85,8 @@ impl Account {
 }
 
 /// Journal entry for a single account in a transaction
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, sqlx::FromRow)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "db", derive(sqlx::FromRow))]
 pub struct JournalEntry {
     pub id: Uuid,
     pub transaction_id: Uuid,
@@ -114,7 +118,8 @@ impl JournalEntry {
 }
 
 /// Transaction representing a business event
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, sqlx::FromRow)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "db", derive(sqlx::FromRow))]
 pub struct Transaction {
     pub id: Uuid,
     pub description: String,
