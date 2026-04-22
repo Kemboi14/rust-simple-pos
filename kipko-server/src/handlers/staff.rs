@@ -6,7 +6,7 @@ use axum::{
     http::StatusCode,
     response::Json,
 };
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use sqlx::Row;
 use uuid::Uuid;
 use kipko_core::models::*;
@@ -35,7 +35,7 @@ pub async fn get_staff(
     let rows = sqlx::query(
         r#"
         SELECT 
-            id, name, email, role, is_active,
+            id, name, email, role::text, is_active,
             created_at, updated_at
         FROM staff 
         ORDER BY name
@@ -76,7 +76,7 @@ pub async fn get_staff_member(
     let row = sqlx::query(
         r#"
         SELECT 
-            id, name, email, role, is_active,
+            id, name, email, role::text, is_active,
             created_at, updated_at
         FROM staff 
         WHERE id = $1
@@ -124,7 +124,7 @@ pub async fn create_staff(
         INSERT INTO staff (name, email, role)
         VALUES ($1, $2, $3)
         RETURNING 
-            id, name, email, role, is_active,
+            id, name, email, role::text, is_active,
             created_at, updated_at
         "#
     )
@@ -175,7 +175,7 @@ pub async fn update_staff(
             updated_at = CURRENT_TIMESTAMP
         WHERE id = $1
         RETURNING 
-            id, name, email, role, is_active,
+            id, name, email, role::text, is_active,
             created_at, updated_at
         "#
     )

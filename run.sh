@@ -4,18 +4,17 @@
 # Kill existing processes on exit
 trap 'kill $(jobs -p) 2>/dev/null; exit' EXIT INT TERM
 
-# Start server in background
-echo "Starting server on port 3000..."
-SERVER_PORT=3000 cargo run --bin kipko-server &
+# Start the server on port 3000
+cd kipko-server
+RUST_LOG=info SERVER_PORT=3000 cargo run --bin kipko-server &
 SERVER_PID=$!
 
 # Wait for server to start
-sleep 3
+sleep 2
 
-# Start UI
-echo "Starting UI..."
-cd kipko-ui
-API_BASE_URL=http://localhost:3000 $HOME/.cargo/bin/dx serve --no-default-features &
+# Start the UI on port 8080 with API_BASE_URL pointing to server
+cd ../kipko-ui
+API_BASE_URL=http://localhost:3000 dx serve --port 8080 &
 UI_PID=$!
 
 echo "Both services running!"

@@ -6,7 +6,7 @@ use axum::{
     http::StatusCode,
     response::Json,
 };
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use sqlx::Row;
 use uuid::Uuid;
 use kipko_core::models::*;
@@ -21,6 +21,9 @@ pub struct CreateMenuItemRequest {
     pub tax_rate: rust_decimal::Decimal,
     pub preparation_time_minutes: Option<i32>,
     pub display_order: Option<i32>,
+    pub image_url: Option<String>,
+    pub stock_quantity: Option<i32>,
+    pub low_stock_threshold: Option<i32>,
 }
 
 /// Menu item update request
@@ -34,10 +37,14 @@ pub struct UpdateMenuItemRequest {
     pub is_available: Option<bool>,
     pub preparation_time_minutes: Option<i32>,
     pub display_order: Option<i32>,
+    pub image_url: Option<String>,
+    pub stock_quantity: Option<i32>,
+    pub low_stock_threshold: Option<i32>,
 }
 
 /// Menu category creation request
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 pub struct CreateCategoryRequest {
     pub name: String,
     pub description: Option<String>,
@@ -80,10 +87,11 @@ pub async fn get_menu_items(
 ) -> Result<Json<ApiResponse<Vec<MenuItem>>>, StatusCode> {
     let rows = sqlx::query(
         r#"
-        SELECT 
-            mi.id, mi.category_id, mi.name, mi.description, 
-            mi.price, mi.tax_rate, mi.is_available, 
+        SELECT
+            mi.id, mi.category_id, mi.name, mi.description,
+            mi.price, mi.tax_rate, mi.is_available,
             mi.preparation_time_minutes, mi.display_order,
+            mi.image_url, mi.stock_quantity, mi.low_stock_threshold,
             mi.created_at, mi.updated_at
         FROM menu_items mi
         ORDER BY mi.display_order, mi.name
@@ -101,11 +109,14 @@ pub async fn get_menu_items(
         category_id: row.get("category_id"),
         name: row.get("name"),
         description: row.get("description"),
-        price: kipko_core::money::Money::new(row.get("price"), "USD".to_string()).unwrap(),
+        price: kipko_core::money::Money::new(row.get("price"), kipko_core::money::currencies::ksh()).unwrap(),
         tax_rate: row.get("tax_rate"),
         is_available: row.get("is_available"),
         preparation_time_minutes: row.get("preparation_time_minutes"),
         display_order: row.get("display_order"),
+        image_url: row.get("image_url"),
+        stock_quantity: row.get("stock_quantity"),
+        low_stock_threshold: row.get("low_stock_threshold"),
         created_at: row.get("created_at"),
         updated_at: row.get("updated_at"),
     }).collect();
@@ -120,12 +131,13 @@ pub async fn get_menu_item(
 ) -> Result<Json<ApiResponse<MenuItem>>, StatusCode> {
     let row = sqlx::query(
         r#"
-        SELECT 
-            id, category_id, name, description, 
-            price, tax_rate, is_available, 
+        SELECT
+            id, category_id, name, description,
+            price, tax_rate, is_available,
             preparation_time_minutes, display_order,
+            image_url, stock_quantity, low_stock_threshold,
             created_at, updated_at
-        FROM menu_items 
+        FROM menu_items
         WHERE id = $1
         "#
     )
@@ -144,11 +156,14 @@ pub async fn get_menu_item(
                 category_id: row.get("category_id"),
                 name: row.get("name"),
                 description: row.get("description"),
-                price: kipko_core::money::Money::new(row.get("price"), "USD".to_string()).unwrap(),
+                price: kipko_core::money::Money::new(row.get("price"), kipko_core::money::currencies::ksh()).unwrap(),
                 tax_rate: row.get("tax_rate"),
                 is_available: row.get("is_available"),
                 preparation_time_minutes: row.get("preparation_time_minutes"),
                 display_order: row.get("display_order"),
+                image_url: row.get("image_url"),
+                stock_quantity: row.get("stock_quantity"),
+                low_stock_threshold: row.get("low_stock_threshold"),
                 created_at: row.get("created_at"),
                 updated_at: row.get("updated_at"),
             };
@@ -165,12 +180,13 @@ pub async fn create_menu_item(
 ) -> Result<Json<ApiResponse<MenuItem>>, StatusCode> {
     let row = sqlx::query(
         r#"
-        INSERT INTO menu_items (category_id, name, description, price, tax_rate, preparation_time_minutes, display_order)
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
-        RETURNING 
-            id, category_id, name, description, 
-            price, tax_rate, is_available, 
+        INSERT INTO menu_items (category_id, name, description, price, tax_rate, preparation_time_minutes, display_order, image_url, stock_quantity, low_stock_threshold)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        RETURNING
+            id, category_id, name, description,
+            price, tax_rate, is_available,
             preparation_time_minutes, display_order,
+            image_url, stock_quantity, low_stock_threshold,
             created_at, updated_at
         "#
     )
@@ -181,6 +197,9 @@ pub async fn create_menu_item(
     .bind(request.tax_rate)
     .bind(request.preparation_time_minutes)
     .bind(request.display_order.unwrap_or(0))
+    .bind(&request.image_url)
+    .bind(request.stock_quantity.unwrap_or(0))
+    .bind(request.low_stock_threshold.unwrap_or(10))
     .fetch_one(&state.db_pool)
     .await
     .map_err(|e| {
@@ -193,11 +212,14 @@ pub async fn create_menu_item(
         category_id: row.get("category_id"),
         name: row.get("name"),
         description: row.get("description"),
-        price: kipko_core::money::Money::new(row.get("price"), "USD".to_string()).unwrap(),
+        price: kipko_core::money::Money::new(row.get("price"), kipko_core::money::currencies::ksh()).unwrap(),
         tax_rate: row.get("tax_rate"),
         is_available: row.get("is_available"),
         preparation_time_minutes: row.get("preparation_time_minutes"),
         display_order: row.get("display_order"),
+        image_url: row.get("image_url"),
+        stock_quantity: row.get("stock_quantity"),
+        low_stock_threshold: row.get("low_stock_threshold"),
         created_at: row.get("created_at"),
         updated_at: row.get("updated_at"),
     };
@@ -213,8 +235,8 @@ pub async fn update_menu_item(
 ) -> Result<Json<ApiResponse<MenuItem>>, StatusCode> {
     let row = sqlx::query(
         r#"
-        UPDATE menu_items 
-        SET 
+        UPDATE menu_items
+        SET
             category_id = COALESCE($2, category_id),
             name = COALESCE($3, name),
             description = COALESCE($4, description),
@@ -223,12 +245,16 @@ pub async fn update_menu_item(
             is_available = COALESCE($7, is_available),
             preparation_time_minutes = COALESCE($8, preparation_time_minutes),
             display_order = COALESCE($9, display_order),
+            image_url = COALESCE($10, image_url),
+            stock_quantity = COALESCE($11, stock_quantity),
+            low_stock_threshold = COALESCE($12, low_stock_threshold),
             updated_at = CURRENT_TIMESTAMP
         WHERE id = $1
-        RETURNING 
-            id, category_id, name, description, 
-            price, tax_rate, is_available, 
+        RETURNING
+            id, category_id, name, description,
+            price, tax_rate, is_available,
             preparation_time_minutes, display_order,
+            image_url, stock_quantity, low_stock_threshold,
             created_at, updated_at
         "#
     )
@@ -241,6 +267,9 @@ pub async fn update_menu_item(
     .bind(request.is_available)
     .bind(request.preparation_time_minutes)
     .bind(request.display_order)
+    .bind(&request.image_url)
+    .bind(request.stock_quantity)
+    .bind(request.low_stock_threshold)
     .fetch_optional(&state.db_pool)
     .await
     .map_err(|e| {
@@ -255,11 +284,14 @@ pub async fn update_menu_item(
                 category_id: row.get("category_id"),
                 name: row.get("name"),
                 description: row.get("description"),
-                price: kipko_core::money::Money::new(row.get("price"), "USD".to_string()).unwrap(),
+                price: kipko_core::money::Money::new(row.get("price"), kipko_core::money::currencies::ksh()).unwrap(),
                 tax_rate: row.get("tax_rate"),
                 is_available: row.get("is_available"),
                 preparation_time_minutes: row.get("preparation_time_minutes"),
                 display_order: row.get("display_order"),
+                image_url: row.get("image_url"),
+                stock_quantity: row.get("stock_quantity"),
+                low_stock_threshold: row.get("low_stock_threshold"),
                 created_at: row.get("created_at"),
                 updated_at: row.get("updated_at"),
             };

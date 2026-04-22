@@ -2,13 +2,11 @@
 
 use crate::{AppState, ApiResponse};
 use axum::{
-    extract::{Path, State},
+    extract::State,
     http::StatusCode,
     response::Json,
 };
-use serde::{Deserialize, Serialize};
 use sqlx::Row;
-use uuid::Uuid;
 use kipko_core::tax::*;
 
 /// Get all tax jurisdictions

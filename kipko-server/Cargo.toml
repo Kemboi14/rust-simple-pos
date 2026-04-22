@@ -19,14 +19,14 @@ sqlx = { workspace = true }
 
 # Server dependencies  
 axum = { workspace = true }
-tokio = { workspace = true }
 tower = { workspace = true }
 tower-http = { workspace = true }
+tokio = { version = "1.0", features = ["rt-multi-thread", "macros", "net"] }
 
 # Additional server dependencies
 tracing = "0.1"
 tracing-subscriber = "0.3"
 dotenvy = "0.15"
 
-# Internal dependencies
+# Workspace dependencies
 kipko-core = { path = "../kipko-core", features = ["db"] }

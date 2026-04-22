@@ -1,12 +1,12 @@
 //! Table management handlers
 
-use crate::{AppState, ApiResponse, PaginatedResponse};
+use crate::{AppState, ApiResponse};
 use axum::{
     extract::{Path, State},
     http::StatusCode,
     response::Json,
 };
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use sqlx::Row;
 use uuid::Uuid;
 use kipko_core::models::*;
@@ -35,7 +35,7 @@ pub async fn get_tables(
     let rows = sqlx::query(
         r#"
         SELECT 
-            id, number, capacity, status, location,
+            id, number, capacity, status::text, location,
             created_at, updated_at
         FROM tables 
         ORDER BY number
@@ -75,7 +75,7 @@ pub async fn get_table(
     let row = sqlx::query(
         r#"
         SELECT 
-            id, number, capacity, status, location,
+            id, number, capacity, status::text, location,
             created_at, updated_at
         FROM tables 
         WHERE id = $1
@@ -122,7 +122,7 @@ pub async fn create_table(
         INSERT INTO tables (number, capacity, location)
         VALUES ($1, $2, $3)
         RETURNING 
-            id, number, capacity, status, location,
+            id, number, capacity, status::text, location,
             created_at, updated_at
         "#
     )
@@ -172,7 +172,7 @@ pub async fn update_table(
             updated_at = CURRENT_TIMESTAMP
         WHERE id = $1
         RETURNING 
-            id, number, capacity, status, location,
+            id, number, capacity, status::text, location,
             created_at, updated_at
         "#
     )
@@ -245,7 +245,7 @@ pub async fn occupy_table(
         SET status = 'Occupied', updated_at = CURRENT_TIMESTAMP
         WHERE id = $1 AND status IN ('Empty', 'Dirty')
         RETURNING 
-            id, number, capacity, status, location,
+            id, number, capacity, status::text, location,
             created_at, updated_at
         "#
     )
@@ -291,7 +291,7 @@ pub async fn clear_table(
         SET status = 'Dirty', updated_at = CURRENT_TIMESTAMP
         WHERE id = $1 AND status = 'Occupied'
         RETURNING 
-            id, number, capacity, status, location,
+            id, number, capacity, status::text, location,
             created_at, updated_at
         "#
     )
@@ -337,7 +337,7 @@ pub async fn clean_table(
         SET status = 'Empty', updated_at = CURRENT_TIMESTAMP
         WHERE id = $1 AND status = 'Dirty'
         RETURNING 
-            id, number, capacity, status, location,
+            id, number, capacity, status::text, location,
             created_at, updated_at
         "#
     )

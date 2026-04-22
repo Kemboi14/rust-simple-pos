@@ -2,13 +2,11 @@
 
 use crate::{AppState, ApiResponse};
 use axum::{
-    extract::{Path, State},
+    extract::State,
     http::StatusCode,
     response::Json,
 };
-use serde::{Deserialize, Serialize};
 use sqlx::Row;
-use uuid::Uuid;
 use kipko_core::accounting::*;
 
 /// Get all transactions
@@ -83,7 +81,7 @@ pub async fn get_accounts(
 
 /// Get account balances
 pub async fn get_account_balances(
-    State(state): State<AppState>,
+    State(_state): State<AppState>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, StatusCode> {
     // This would calculate actual balances from journal entries
     // For now, return a placeholder response

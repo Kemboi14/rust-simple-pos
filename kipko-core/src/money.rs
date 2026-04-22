@@ -143,6 +143,7 @@ impl fmt::Display for Money {
 
 /// Common currency constants
 pub mod currencies {
+    pub const KSH: &str = "KSH";
     pub const USD: &str = "USD";
     pub const EUR: &str = "EUR";
     pub const GBP: &str = "GBP";
@@ -150,6 +151,7 @@ pub mod currencies {
     pub const CAD: &str = "CAD";
     pub const AUD: &str = "AUD";
     
+    pub fn ksh() -> String { KSH.to_string() }
     pub fn usd() -> String { USD.to_string() }
     pub fn eur() -> String { EUR.to_string() }
     pub fn gbp() -> String { GBP.to_string() }

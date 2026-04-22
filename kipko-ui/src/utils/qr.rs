@@ -35,6 +35,7 @@ pub fn generate_table_qr_code(table_id: uuid::Uuid, table_number: i32, base_url:
 }
 
 /// Generate a QR code for an order (for payment scanning)
+#[allow(dead_code)]
 pub fn generate_order_qr_code(order_id: uuid::Uuid, base_url: &str) -> String {
     let url = format!("{}/order/pay/{}", base_url, order_id);
     generate_qr_code(&url, 200).unwrap_or_else(|_| {
@@ -44,6 +45,7 @@ pub fn generate_order_qr_code(order_id: uuid::Uuid, base_url: &str) -> String {
 }
 
 /// Generate a QR code for a menu (for customers to view menu)
+#[allow(dead_code)]
 pub fn generate_menu_qr_code(base_url: &str) -> String {
     let url = format!("{}/menu", base_url);
     generate_qr_code(&url, 200).unwrap_or_else(|_| {

@@ -13,7 +13,6 @@ use sqlx::postgres::PgPoolOptions;
 use std::net::SocketAddr;
 use tower::ServiceBuilder;
 use tower_http::cors::CorsLayer;
-use uuid::Uuid;
 
 mod handlers;
 mod models;
@@ -74,14 +73,24 @@ async fn main() -> anyhow::Result<()> {
         // Orders endpoints
         .route("/orders", get(get_orders).post(create_order))
         .route("/orders/:id", get(get_order).put(update_order).delete(delete_order))
-        .route("/orders/:id/items", get(get_order_items).post(add_order_item))
-        .route("/orders/:id/items/:item_id", put(update_order_item).delete(remove_order_item))
+        .route("/orders/:id/items", get(handlers::order_items::get_order_items).post(handlers::order_items::add_order_item))
+        .route("/orders/:id/items/:item_id", put(handlers::order_items::update_order_item).delete(handlers::order_items::delete_order_item))
         .route("/orders/:id/calculate-tax", post(calculate_order_tax))
         .route("/orders/:id/close", post(close_order))
-        
+
         // Payments endpoints
         .route("/payments", get(get_payments).post(create_payment))
         .route("/payments/:id", get(get_payment))
+        .route("/payments/:id/complete", post(handlers::payments::complete_payment))
+        .route("/orders/:order_id/payments", get(handlers::payments::get_order_payments))
+
+        // Customers endpoints
+        .route("/customers", get(handlers::customers::get_customers).post(handlers::customers::create_customer))
+        .route("/customers/:id", get(handlers::customers::get_customer).put(handlers::customers::update_customer))
+
+        // Reservations endpoints
+        .route("/reservations", get(handlers::reservations::get_reservations).post(handlers::reservations::create_reservation))
+        .route("/reservations/:id", get(handlers::reservations::get_reservation).put(handlers::reservations::update_reservation))
         
         // Staff endpoints
         .route("/staff", get(get_staff).post(create_staff))
@@ -95,7 +104,15 @@ async fn main() -> anyhow::Result<()> {
         // Tax endpoints
         .route("/tax/jurisdictions", get(get_tax_jurisdictions))
         .route("/tax/exemptions", get(get_tax_exemptions))
-        
+
+        // Inventory endpoints
+        .route("/inventory/transactions", get(get_inventory_transactions).post(create_inventory_transaction))
+        .route("/inventory/transactions/item/:menu_item_id", get(get_inventory_transactions_for_item))
+
+        // Registry endpoints
+        .route("/registry/entries", get(get_registry_entries).post(create_registry_entry))
+        .route("/registry/entries/:entity_type/:entity_id", get(get_registry_entries_for_entity))
+
         // CORS middleware
         .layer(
             ServiceBuilder::new()
@@ -106,7 +123,7 @@ async fn main() -> anyhow::Result<()> {
     // Get server configuration
     let host = std::env::var("SERVER_HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
     let port = std::env::var("SERVER_PORT")
-        .unwrap_or_else(|_| "8080".to_string())
+        .unwrap_or_else(|_| "3000".to_string())
         .parse()
         .expect("Invalid port number");
 

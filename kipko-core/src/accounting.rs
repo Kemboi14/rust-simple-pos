@@ -259,8 +259,8 @@ impl AccountingSystem {
         let asset_account = match payment_method {
             crate::models::PaymentMethod::Cash => "Cash",
             crate::models::PaymentMethod::Card => "Card Receivable",
-            crate::models::PaymentMethod::Mobile => "Card Receivable", // Treat mobile as card
-            crate::models::PaymentMethod::GiftCard => "Card Receivable", // Treat gift card as card
+            crate::models::PaymentMethod::MobileMoney => "Card Receivable", // Treat mobile money as card
+            crate::models::PaymentMethod::Mpesa => "Card Receivable", // Treat M-Pesa as card
         };
         
         let cash_account = self.chart_of_accounts.get_account_by_name(asset_account)

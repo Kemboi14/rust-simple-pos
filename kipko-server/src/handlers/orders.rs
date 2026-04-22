@@ -6,7 +6,7 @@ use axum::{
     http::StatusCode,
     response::Json,
 };
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use sqlx::Row;
 use uuid::Uuid;
 use kipko_core::models::*;
@@ -16,6 +16,9 @@ use kipko_core::models::*;
 pub struct CreateOrderRequest {
     pub table_id: Uuid,
     pub staff_id: Uuid,
+    pub order_type: Option<String>,
+    pub customer_id: Option<Uuid>,
+    pub delivery_address: Option<String>,
 }
 
 /// Order update request
@@ -43,6 +46,7 @@ pub struct UpdateOrderItemRequest {
 /// Tax calculation request
 #[derive(Debug, Deserialize)]
 pub struct CalculateTaxRequest {
+    #[allow(dead_code)]
     pub exemption_id: Option<Uuid>,
 }
 
@@ -53,10 +57,11 @@ pub async fn get_orders(
     let rows = sqlx::query(
         r#"
         SELECT 
-            id, table_id, staff_id, status, 
+            id, table_id, staff_id, status::text as status, order_type::text as order_type,
             subtotal, tax_amount, total_amount,
+            delivery_address, delivery_fee, customer_id, location_id,
             created_at, updated_at
-        FROM orders 
+        FROM orders
         ORDER BY created_at DESC
         "#
     )
@@ -67,6 +72,7 @@ pub async fn get_orders(
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
 
+    let currency = kipko_core::money::currencies::ksh();
     let orders: Vec<Order> = rows.into_iter().map(|row| Order {
         id: row.get("id"),
         table_id: row.get("table_id"),
@@ -77,9 +83,18 @@ pub async fn get_orders(
             "Cancelled" => OrderStatus::Cancelled,
             _ => OrderStatus::Open,
         },
-        subtotal: kipko_core::money::Money::new(row.get("subtotal"), "USD".to_string()).unwrap(),
-        tax_amount: kipko_core::money::Money::new(row.get("tax_amount"), "USD".to_string()).unwrap(),
-        total_amount: kipko_core::money::Money::new(row.get("total_amount"), "USD".to_string()).unwrap(),
+        order_type: match row.get::<Option<&str>, _>("order_type") {
+            Some("Takeout") => kipko_core::OrderType::Takeout,
+            Some("Delivery") => kipko_core::OrderType::Delivery,
+            _ => kipko_core::OrderType::DineIn,
+        },
+        subtotal: kipko_core::Money::new(row.get("subtotal"), currency.clone()).unwrap(),
+        tax_amount: kipko_core::Money::new(row.get("tax_amount"), currency.clone()).unwrap(),
+        total_amount: kipko_core::Money::new(row.get("total_amount"), currency.clone()).unwrap(),
+        delivery_address: row.get("delivery_address"),
+        delivery_fee: kipko_core::Money::new(row.get::<Option<rust_decimal::Decimal>, _>("delivery_fee").unwrap_or(rust_decimal::Decimal::ZERO), currency.clone()).unwrap(),
+        customer_id: row.get("customer_id"),
+        location_id: row.get("location_id"),
         created_at: row.get("created_at"),
         updated_at: row.get("updated_at"),
     }).collect();
@@ -95,10 +110,11 @@ pub async fn get_order(
     let row = sqlx::query(
         r#"
         SELECT 
-            id, table_id, staff_id, status, 
+            id, table_id, staff_id, status::text as status, order_type::text as order_type,
             subtotal, tax_amount, total_amount,
+            delivery_address, delivery_fee, customer_id, location_id,
             created_at, updated_at
-        FROM orders 
+        FROM orders
         WHERE id = $1
         "#
     )
@@ -112,6 +128,7 @@ pub async fn get_order(
 
     match row {
         Some(row) => {
+            let currency = kipko_core::money::currencies::ksh();
             let order = Order {
                 id: row.get("id"),
                 table_id: row.get("table_id"),
@@ -122,9 +139,18 @@ pub async fn get_order(
                     "Cancelled" => OrderStatus::Cancelled,
                     _ => OrderStatus::Open,
                 },
-                subtotal: kipko_core::money::Money::new(row.get("subtotal"), "USD".to_string()).unwrap(),
-                tax_amount: kipko_core::money::Money::new(row.get("tax_amount"), "USD".to_string()).unwrap(),
-                total_amount: kipko_core::money::Money::new(row.get("total_amount"), "USD".to_string()).unwrap(),
+                order_type: match row.get::<Option<&str>, _>("order_type") {
+                    Some("Takeout") => kipko_core::OrderType::Takeout,
+                    Some("Delivery") => kipko_core::OrderType::Delivery,
+                    _ => kipko_core::OrderType::DineIn,
+                },
+                subtotal: kipko_core::Money::new(row.get("subtotal"), currency.clone()).unwrap(),
+                tax_amount: kipko_core::Money::new(row.get("tax_amount"), currency.clone()).unwrap(),
+                total_amount: kipko_core::Money::new(row.get("total_amount"), currency.clone()).unwrap(),
+                delivery_address: row.get("delivery_address"),
+                delivery_fee: kipko_core::Money::new(row.get::<Option<rust_decimal::Decimal>, _>("delivery_fee").unwrap_or(rust_decimal::Decimal::ZERO), currency.clone()).unwrap(),
+                customer_id: row.get("customer_id"),
+                location_id: row.get("location_id"),
                 created_at: row.get("created_at"),
                 updated_at: row.get("updated_at"),
             };
@@ -139,18 +165,26 @@ pub async fn create_order(
     State(state): State<AppState>,
     Json(request): Json<CreateOrderRequest>,
 ) -> Result<Json<ApiResponse<Order>>, StatusCode> {
+    let order_type = request.order_type.unwrap_or_else(|| "DineIn".to_string());
+    let delivery_fee = if order_type == "Delivery" { rust_decimal::Decimal::from(100) } else { rust_decimal::Decimal::ZERO };
+
     let row = sqlx::query(
         r#"
-        INSERT INTO orders (table_id, staff_id)
-        VALUES ($1, $2)
-        RETURNING 
-            id, table_id, staff_id, status, 
+        INSERT INTO orders (table_id, staff_id, order_type, customer_id, delivery_address, delivery_fee)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        RETURNING
+            id, table_id, staff_id, status::text as status, order_type::text as order_type,
             subtotal, tax_amount, total_amount,
+            delivery_address, delivery_fee, customer_id, location_id,
             created_at, updated_at
         "#
     )
     .bind(request.table_id)
     .bind(request.staff_id)
+    .bind(&order_type)
+    .bind(request.customer_id)
+    .bind(&request.delivery_address)
+    .bind(delivery_fee)
     .fetch_one(&state.db_pool)
     .await
     .map_err(|e| {
@@ -158,6 +192,7 @@ pub async fn create_order(
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
 
+    let currency = kipko_core::money::currencies::ksh();
     let order = Order {
         id: row.get("id"),
         table_id: row.get("table_id"),
@@ -168,9 +203,18 @@ pub async fn create_order(
             "Cancelled" => OrderStatus::Cancelled,
             _ => OrderStatus::Open,
         },
-        subtotal: kipko_core::money::Money::new(row.get("subtotal"), "USD".to_string()).unwrap(),
-        tax_amount: kipko_core::money::Money::new(row.get("tax_amount"), "USD".to_string()).unwrap(),
-        total_amount: kipko_core::money::Money::new(row.get("total_amount"), "USD".to_string()).unwrap(),
+        order_type: match row.get::<&str, _>("order_type") {
+            "Takeout" => kipko_core::OrderType::Takeout,
+            "Delivery" => kipko_core::OrderType::Delivery,
+            _ => kipko_core::OrderType::DineIn,
+        },
+        subtotal: kipko_core::Money::new(row.get("subtotal"), currency.clone()).unwrap(),
+        tax_amount: kipko_core::Money::new(row.get("tax_amount"), currency.clone()).unwrap(),
+        total_amount: kipko_core::Money::new(row.get("total_amount"), currency.clone()).unwrap(),
+        delivery_address: row.get("delivery_address"),
+        delivery_fee: kipko_core::Money::new(row.get::<Option<rust_decimal::Decimal>, _>("delivery_fee").unwrap_or(rust_decimal::Decimal::ZERO), currency.clone()).unwrap(),
+        customer_id: row.get("customer_id"),
+        location_id: row.get("location_id"),
         created_at: row.get("created_at"),
         updated_at: row.get("updated_at"),
     };
@@ -186,14 +230,15 @@ pub async fn update_order(
 ) -> Result<Json<ApiResponse<Order>>, StatusCode> {
     let row = sqlx::query(
         r#"
-        UPDATE orders 
-        SET 
+        UPDATE orders
+        SET
             status = COALESCE($2, status),
             updated_at = CURRENT_TIMESTAMP
         WHERE id = $1
-        RETURNING 
-            id, table_id, staff_id, status, 
+        RETURNING
+            id, table_id, staff_id, status::text as status, order_type::text as order_type,
             subtotal, tax_amount, total_amount,
+            delivery_address, delivery_fee, customer_id, location_id,
             created_at, updated_at
         "#
     )
@@ -208,6 +253,7 @@ pub async fn update_order(
 
     match row {
         Some(row) => {
+            let currency = kipko_core::money::currencies::ksh();
             let order = Order {
                 id: row.get("id"),
                 table_id: row.get("table_id"),
@@ -218,9 +264,18 @@ pub async fn update_order(
                     "Cancelled" => OrderStatus::Cancelled,
                     _ => OrderStatus::Open,
                 },
-                subtotal: kipko_core::money::Money::new(row.get("subtotal"), "USD".to_string()).unwrap(),
-                tax_amount: kipko_core::money::Money::new(row.get("tax_amount"), "USD".to_string()).unwrap(),
-                total_amount: kipko_core::money::Money::new(row.get("total_amount"), "USD".to_string()).unwrap(),
+                order_type: match row.get::<Option<&str>, _>("order_type") {
+                    Some("Takeout") => kipko_core::OrderType::Takeout,
+                    Some("Delivery") => kipko_core::OrderType::Delivery,
+                    _ => kipko_core::OrderType::DineIn,
+                },
+                subtotal: kipko_core::Money::new(row.get("subtotal"), currency.clone()).unwrap(),
+                tax_amount: kipko_core::Money::new(row.get("tax_amount"), currency.clone()).unwrap(),
+                total_amount: kipko_core::Money::new(row.get("total_amount"), currency.clone()).unwrap(),
+                delivery_address: row.get("delivery_address"),
+                delivery_fee: kipko_core::Money::new(row.get::<Option<rust_decimal::Decimal>, _>("delivery_fee").unwrap_or(rust_decimal::Decimal::ZERO), currency.clone()).unwrap(),
+                customer_id: row.get("customer_id"),
+                location_id: row.get("location_id"),
                 created_at: row.get("created_at"),
                 updated_at: row.get("updated_at"),
             };
@@ -262,7 +317,7 @@ pub async fn get_order_items(
         r#"
         SELECT 
             id, order_id, menu_item_id, quantity, unit_price, 
-            status, notes, void_reason, void_by,
+            status::text, notes, void_reason, void_by,
             created_at, updated_at
         FROM order_items 
         WHERE order_id = $1
@@ -454,9 +509,9 @@ pub async fn remove_order_item(
 
 /// Calculate order tax
 pub async fn calculate_order_tax(
-    State(state): State<AppState>,
+    State(_state): State<AppState>,
     Path(order_id): Path<Uuid>,
-    Json(request): Json<CalculateTaxRequest>,
+    Json(_request): Json<CalculateTaxRequest>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, StatusCode> {
     // This would integrate with the kipko-core tax calculation engine
     // For now, return a placeholder response
@@ -478,12 +533,13 @@ pub async fn close_order(
 ) -> Result<Json<ApiResponse<Order>>, StatusCode> {
     let row = sqlx::query(
         r#"
-        UPDATE orders 
+        UPDATE orders
         SET status = 'Closed', updated_at = CURRENT_TIMESTAMP
         WHERE id = $1 AND status = 'Open'
-        RETURNING 
-            id, table_id, staff_id, status, 
+        RETURNING
+            id, table_id, staff_id, status::text as status, order_type::text as order_type,
             subtotal, tax_amount, total_amount,
+            delivery_address, delivery_fee, customer_id, location_id,
             created_at, updated_at
         "#
     )
@@ -497,6 +553,7 @@ pub async fn close_order(
 
     match row {
         Some(row) => {
+            let currency = kipko_core::money::currencies::ksh();
             let order = Order {
                 id: row.get("id"),
                 table_id: row.get("table_id"),
@@ -507,9 +564,18 @@ pub async fn close_order(
                     "Cancelled" => OrderStatus::Cancelled,
                     _ => OrderStatus::Open,
                 },
-                subtotal: kipko_core::money::Money::new(row.get("subtotal"), "USD".to_string()).unwrap(),
-                tax_amount: kipko_core::money::Money::new(row.get("tax_amount"), "USD".to_string()).unwrap(),
-                total_amount: kipko_core::money::Money::new(row.get("total_amount"), "USD".to_string()).unwrap(),
+                order_type: match row.get::<Option<&str>, _>("order_type") {
+                    Some("Takeout") => kipko_core::OrderType::Takeout,
+                    Some("Delivery") => kipko_core::OrderType::Delivery,
+                    _ => kipko_core::OrderType::DineIn,
+                },
+                subtotal: kipko_core::Money::new(row.get("subtotal"), currency.clone()).unwrap(),
+                tax_amount: kipko_core::Money::new(row.get("tax_amount"), currency.clone()).unwrap(),
+                total_amount: kipko_core::Money::new(row.get("total_amount"), currency.clone()).unwrap(),
+                delivery_address: row.get("delivery_address"),
+                delivery_fee: kipko_core::Money::new(row.get::<Option<rust_decimal::Decimal>, _>("delivery_fee").unwrap_or(rust_decimal::Decimal::ZERO), currency.clone()).unwrap(),
+                customer_id: row.get("customer_id"),
+                location_id: row.get("location_id"),
                 created_at: row.get("created_at"),
                 updated_at: row.get("updated_at"),
             };

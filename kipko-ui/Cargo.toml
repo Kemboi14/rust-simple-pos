@@ -27,26 +27,26 @@ dioxus = { workspace = true, features = ["web"] }
 
 # Web server dependencies (only for native builds, not WASM)
 axum = { workspace = true, optional = true }
-tokio = { workspace = true, optional = true }
+tokio = { version = "1.0", features = ["rt-multi-thread", "macros"], optional = true }
 tower = { workspace = true, optional = true }
 tower-http = { workspace = true, optional = true }
 
 # Internal dependencies
-kipko-core = { path = "../kipko-core" }
+kipko-core = { path = "../kipko-core", default-features = false, features = [] }
 
 # WebAssembly dependencies
 getrandom = { version = "0.2", features = ["js"] }
 wasm-bindgen-futures = "0.4"
+wasm-bindgen = "0.2"
+web-sys = { version = "0.3", features = ["Headers", "Request", "RequestInit", "RequestMode", "Response", "Window"] }
+js-sys = "0.3"
 # Force ahash to use older version compatible with getrandom 0.2
 ahash = { version = "=0.8.7", default-features = false, features = ["runtime-rng"] }
-
-# HTTP client
-reqwest = { version = "0.11", features = ["json"] }
 
 # QR code generation
 qrcode = "0.14"
 base64 = "0.21"
 
 [features]
-default = ["server"]
+default = []
 server = ["axum", "tokio", "tower", "tower-http"]

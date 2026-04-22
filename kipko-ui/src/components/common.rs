@@ -41,18 +41,18 @@ pub fn Button(
     disabled: Option<bool>,
     class: Option<String>,
 ) -> Element {
-    let base_classes = "px-4 py-2 rounded font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2";
+    let base_classes = "px-5 py-2.5 rounded-xl font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 transform hover:scale-105 active:scale-95";
     
     let variant_classes = match variant {
-        ButtonVariant::Primary => "bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500",
-        ButtonVariant::Secondary => "bg-gray-600 text-white hover:bg-gray-700 focus:ring-gray-500",
-        ButtonVariant::Success => "bg-green-600 text-white hover:bg-green-700 focus:ring-green-500",
-        ButtonVariant::Danger => "bg-red-600 text-white hover:bg-red-700 focus:ring-red-500",
-        ButtonVariant::Outline => "border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 focus:ring-blue-500",
+        ButtonVariant::Primary => "bg-gradient-to-r from-[#e0311f] to-[#dc2381] text-white hover:from-[#c4211a] hover:to-[#c41d70] focus:ring-[#e0311f] shadow-lg shadow-[#e0311f]/30",
+        ButtonVariant::Secondary => "bg-gradient-to-r from-[#55aa86] to-[#4a9a76] text-white hover:from-[#4a9a76] hover:to-[#3f8a66] focus:ring-[#55aa86] shadow-lg shadow-[#55aa86]/30",
+        ButtonVariant::Success => "bg-gradient-to-r from-[#55aa86] to-[#6bc29a] text-white hover:from-[#4a9a76] hover:to-[#5ab28a] focus:ring-[#55aa86] shadow-lg shadow-[#55aa86]/30",
+        ButtonVariant::Danger => "bg-gradient-to-r from-[#e0311f] to-[#ff4757] text-white hover:from-[#c4211a] hover:to-[#e0383a] focus:ring-[#e0311f] shadow-lg shadow-[#e0311f]/30",
+        ButtonVariant::Outline => "border-2 border-gray-300 text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 focus:ring-gray-500",
     };
     
     let disabled_class = if disabled.unwrap_or(false) {
-        "opacity-50 cursor-not-allowed"
+        "opacity-50 cursor-not-allowed transform-none"
     } else {
         ""
     };
@@ -84,11 +84,11 @@ pub fn Card(
     class: Option<String>,
     padding: Option<CardPadding>,
 ) -> Element {
-    let base_classes = "bg-white rounded-lg shadow-md";
+    let base_classes = "bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100";
     
     let padding_classes = match padding.unwrap_or(CardPadding::Medium) {
         CardPadding::None => "",
-        CardPadding::Small => "p-4",
+        CardPadding::Small => "p-5",
         CardPadding::Medium => "p-6",
         CardPadding::Large => "p-8",
     };
@@ -146,20 +146,20 @@ pub fn Badge(
     variant: BadgeVariant,
     size: Option<BadgeSize>,
 ) -> Element {
-    let base_classes = "inline-flex items-center font-medium rounded-full";
+    let base_classes = "inline-flex items-center font-semibold rounded-xl";
     
     let variant_classes = match variant {
-        BadgeVariant::Primary => "bg-blue-100 text-blue-800",
-        BadgeVariant::Secondary => "bg-gray-100 text-gray-800",
-        BadgeVariant::Success => "bg-green-100 text-green-800",
-        BadgeVariant::Danger => "bg-red-100 text-red-800",
-        BadgeVariant::Warning => "bg-yellow-100 text-yellow-800",
+        BadgeVariant::Primary => "bg-gradient-to-r from-[#e0311f]/10 to-[#dc2381]/10 text-[#e0311f] border border-[#e0311f]/30",
+        BadgeVariant::Secondary => "bg-gradient-to-r from-gray-100 to-gray-200 text-gray-800 border border-gray-300",
+        BadgeVariant::Success => "bg-gradient-to-r from-[#55aa86]/10 to-[#6bc29a]/10 text-[#55aa86] border border-[#55aa86]/30",
+        BadgeVariant::Danger => "bg-gradient-to-r from-[#e0311f]/10 to-[#ff4757]/10 text-[#e0311f] border border-[#e0311f]/30",
+        BadgeVariant::Warning => "bg-gradient-to-r from-amber-100 to-yellow-100 text-amber-800 border border-amber-200",
     };
     
     let size_classes = match size.unwrap_or(BadgeSize::Medium) {
-        BadgeSize::Small => "px-2 py-1 text-xs",
-        BadgeSize::Medium => "px-2.5 py-0.5 text-sm",
-        BadgeSize::Large => "px-3 py-1 text-base",
+        BadgeSize::Small => "px-2.5 py-1 text-xs",
+        BadgeSize::Medium => "px-3 py-1 text-sm",
+        BadgeSize::Large => "px-4 py-1.5 text-base",
     };
     
     rsx! {
