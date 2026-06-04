@@ -1,11 +1,8 @@
 //! Reservation management handlers
 
 use crate::{AppState, ApiResponse};
-use axum::{
-    extract::{Path, State},
-    http::StatusCode,
-    response::Json,
-};
+use actix_web::{web, HttpResponse, Result};
+use tracing::error;
 use serde::Deserialize;
 use sqlx::Row;
 use uuid::Uuid;
@@ -28,8 +25,8 @@ pub struct UpdateReservationRequest {
 }
 
 pub async fn get_reservations(
-    State(state): State<AppState>,
-) -> Result<Json<ApiResponse<Vec<Reservation>>>, StatusCode> {
+    state: web::Data<AppState>,
+) -> Result<HttpResponse> {
     let rows = sqlx::query(
         r#"
         SELECT id, table_id, customer_id, reservation_time, party_size, status, notes, created_at, updated_at
@@ -40,8 +37,8 @@ pub async fn get_reservations(
     .fetch_all(&state.db_pool)
     .await
     .map_err(|e| {
-        tracing::error!("Failed to fetch reservations: {}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
+        error!("Failed to fetch reservations: {}", e);
+        return HttpResponse::InternalServerError().json(serde_json::json!({"error": "Failed to fetch reservations"}))
     })?;
 
     let reservations: Vec<Reservation> = rows.into_iter().map(|row| Reservation {
@@ -62,13 +59,15 @@ pub async fn get_reservations(
         updated_at: row.get("updated_at"),
     }).collect();
 
-    Ok(Json(ApiResponse::success(reservations)))
+    Ok(HttpResponse::Ok().json(ApiResponse::success(reservations)))
 }
 
 pub async fn get_reservation(
-    State(state): State<AppState>,
-    Path(id): Path<Uuid>,
-) -> Result<Json<ApiResponse<Reservation>>, StatusCode> {
+    state: web::Data<AppState>,
+    path: web::Path<Uuid>,
+) -> Result<HttpResponse> {
+    let id = path.into_inner();
+
     let row = sqlx::query(
         r#"
         SELECT id, table_id, customer_id, reservation_time, party_size, status, notes, created_at, updated_at
@@ -80,8 +79,8 @@ pub async fn get_reservation(
     .fetch_optional(&state.db_pool)
     .await
     .map_err(|e| {
-        tracing::error!("Failed to fetch reservation: {}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
+        error!("Failed to fetch reservation: {}", e);
+        return HttpResponse::InternalServerError().json(serde_json::json!({"error": "Failed to fetch reservation"}))
     })?;
 
     match row {
@@ -103,16 +102,16 @@ pub async fn get_reservation(
                 created_at: row.get("created_at"),
                 updated_at: row.get("updated_at"),
             };
-            Ok(Json(ApiResponse::success(reservation)))
+            Ok(HttpResponse::Ok().json(ApiResponse::success(reservation)))
         }
-        None => Err(StatusCode::NOT_FOUND),
+        None => Ok(HttpResponse::NotFound().json(serde_json::json!({"error": "Reservation not found"}))),
     }
 }
 
 pub async fn create_reservation(
-    State(state): State<AppState>,
-    Json(request): Json<CreateReservationRequest>,
-) -> Result<Json<ApiResponse<Reservation>>, StatusCode> {
+    state: web::Data<AppState>,
+    request: web::Json<CreateReservationRequest>,
+) -> Result<HttpResponse> {
     let row = sqlx::query(
         r#"
         INSERT INTO reservations (table_id, customer_id, reservation_time, party_size, status, notes)
@@ -128,8 +127,8 @@ pub async fn create_reservation(
     .fetch_one(&state.db_pool)
     .await
     .map_err(|e| {
-        tracing::error!("Failed to create reservation: {}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
+        error!("Failed to create reservation: {}", e);
+        return HttpResponse::InternalServerError().json(serde_json::json!({"error": "Failed to create reservation"}))
     })?;
 
     let reservation = Reservation {
@@ -144,14 +143,16 @@ pub async fn create_reservation(
         updated_at: row.get("updated_at"),
     };
 
-    Ok(Json(ApiResponse::success(reservation)))
+    Ok(HttpResponse::Ok().json(ApiResponse::success(reservation)))
 }
 
 pub async fn update_reservation(
-    State(state): State<AppState>,
-    Path(id): Path<Uuid>,
-    Json(request): Json<UpdateReservationRequest>,
-) -> Result<Json<ApiResponse<Reservation>>, StatusCode> {
+    state: web::Data<AppState>,
+    path: web::Path<Uuid>,
+    request: web::Json<UpdateReservationRequest>,
+) -> Result<HttpResponse> {
+    let id = path.into_inner();
+
     let row = sqlx::query(
         r#"
         UPDATE reservations
@@ -171,8 +172,8 @@ pub async fn update_reservation(
     .fetch_optional(&state.db_pool)
     .await
     .map_err(|e| {
-        tracing::error!("Failed to update reservation: {}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
+        error!("Failed to update reservation: {}", e);
+        return HttpResponse::InternalServerError().json(serde_json::json!({"error": "Failed to update reservation"}))
     })?;
 
     match row {
@@ -194,8 +195,8 @@ pub async fn update_reservation(
                 created_at: row.get("created_at"),
                 updated_at: row.get("updated_at"),
             };
-            Ok(Json(ApiResponse::success(reservation)))
+            Ok(HttpResponse::Ok().json(ApiResponse::success(reservation)))
         }
-        None => Err(StatusCode::NOT_FOUND),
+        None => Ok(HttpResponse::NotFound().json(serde_json::json!({"error": "Reservation not found"}))),
     }
 }

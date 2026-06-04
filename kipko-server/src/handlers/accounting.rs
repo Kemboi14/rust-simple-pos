@@ -3,6 +3,7 @@
 use crate::{AppState, ApiResponse};
 use crate::services::accounting_service::AccountingService;
 use actix_web::{web, HttpResponse, Result};
+use tracing::error as err;
 use serde::Deserialize;
 use sqlx::Row;
 use kipko_core::accounting::*;
@@ -24,7 +25,7 @@ pub async fn get_transactions(
     .fetch_all(&state.db_pool)
     .await
     .map_err(|e| {
-        error!("Failed to fetch transactions: {}", e);
+        err!("Failed to fetch transactions: {}", e);
         return HttpResponse::InternalServerError().json(serde_json::json!({"error": "Failed to fetch transactions"}))
     })?;
 
@@ -58,7 +59,7 @@ pub async fn get_accounts(
     .fetch_all(&state.db_pool)
     .await
     .map_err(|e| {
-        error!("Failed to fetch accounts: {}", e);
+        err!("Failed to fetch accounts: {}", e);
         return HttpResponse::InternalServerError().json(serde_json::json!({"error": "Failed to fetch accounts"}))
     })?;
 
@@ -96,7 +97,7 @@ pub async fn get_account_balances(
     let accounting_service = AccountingService::new(state.db_pool.clone());
     let balances = accounting_service.get_account_balances().await
         .map_err(|e| {
-            error!("Failed to get account balances: {}", e);
+            err!("Failed to get account balances: {}", e);
             return HttpResponse::InternalServerError().json(serde_json::json!({"error": "Failed to get account balances"}))
         })?;
 
@@ -123,7 +124,7 @@ pub async fn get_trial_balance(
     let accounting_service = AccountingService::new(state.db_pool.clone());
     let trial_balance = accounting_service.calculate_trial_balance(as_of_date).await
         .map_err(|e| {
-            error!("Failed to calculate trial balance: {}", e);
+            err!("Failed to calculate trial balance: {}", e);
             return HttpResponse::InternalServerError().json(serde_json::json!({"error": "Failed to calculate trial balance"}))
         })?;
 
@@ -145,7 +146,7 @@ pub async fn get_accounting_periods(
     .fetch_all(&state.db_pool)
     .await
     .map_err(|e| {
-        error!("Failed to fetch accounting periods: {}", e);
+        err!("Failed to fetch accounting periods: {}", e);
         return HttpResponse::InternalServerError().json(serde_json::json!({"error": "Failed to fetch accounting periods"}))
     })?;
 
@@ -188,7 +189,7 @@ pub async fn close_accounting_period(
     .fetch_one(&state.db_pool)
     .await
     .map_err(|e| {
-        error!("Failed to close accounting period: {}", e);
+        err!("Failed to close accounting period: {}", e);
         return HttpResponse::InternalServerError().json(serde_json::json!({"error": "Failed to close accounting period"}))
     })?;
 
@@ -224,7 +225,7 @@ pub async fn get_income_statement(
     let accounting_service = AccountingService::new(state.db_pool.clone());
     let balances = accounting_service.get_account_balances().await
         .map_err(|e| {
-            error!("Failed to get account balances for income statement: {}", e);
+            err!("Failed to get account balances for income statement: {}", e);
             return HttpResponse::InternalServerError().json(serde_json::json!({"error": "Failed to get account balances"}))
         })?;
 
@@ -268,7 +269,7 @@ pub async fn get_balance_sheet(
     let accounting_service = AccountingService::new(state.db_pool.clone());
     let balances = accounting_service.get_account_balances().await
         .map_err(|e| {
-            error!("Failed to get account balances for balance sheet: {}", e);
+            err!("Failed to get account balances for balance sheet: {}", e);
             return HttpResponse::InternalServerError().json(serde_json::json!({"error": "Failed to get account balances"}))
         })?;
 
@@ -321,7 +322,7 @@ pub async fn create_bank_reconciliation(
     // Parse the reconciliation date
     let reconciliation_date = request.reconciliation_date.parse::<chrono::DateTime<Utc>>()
         .map_err(|_| {
-            error!("Invalid date format for reconciliation date");
+            err!("Invalid date format for reconciliation date");
             return HttpResponse::BadRequest().json(serde_json::json!({"error": "Invalid date format"}))
         })?;
 
@@ -337,7 +338,7 @@ pub async fn create_bank_reconciliation(
     .fetch_one(&state.db_pool)
     .await
     .map_err(|e| {
-        error!("Failed to get account balance: {}", e);
+        err!("Failed to get account balance: {}", e);
         return HttpResponse::InternalServerError().json(serde_json::json!({"error": "Failed to get account balance"}))
     })?;
 
@@ -361,7 +362,7 @@ pub async fn create_bank_reconciliation(
     .fetch_one(&state.db_pool)
     .await
     .map_err(|e| {
-        error!("Failed to create bank reconciliation: {}", e);
+        err!("Failed to create bank reconciliation: {}", e);
         return HttpResponse::InternalServerError().json(serde_json::json!({"error": "Failed to create bank reconciliation"}))
     })?;
 
@@ -401,7 +402,7 @@ pub async fn get_bank_reconciliations(
     .fetch_all(&state.db_pool)
     .await
     .map_err(|e| {
-        error!("Failed to fetch bank reconciliations: {}", e);
+        err!("Failed to fetch bank reconciliations: {}", e);
         return HttpResponse::InternalServerError().json(serde_json::json!({"error": "Failed to fetch bank reconciliations"}))
     })?;
 

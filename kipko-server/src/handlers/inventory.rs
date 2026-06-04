@@ -20,11 +20,11 @@ pub struct CreateInventoryTransactionRequest {
 
 /// Get all inventory transactions
 pub async fn get_inventory_transactions(
-    State(state): State<AppState>,
-) -> Result<Json<ApiResponse<Vec<InventoryTransaction>>>, StatusCode> {
+    state: web::Data<AppState>,
+) -> Result<HttpResponse> {
     let rows = sqlx::query(
         r#"
-        SELECT 
+        SELECT
             id, menu_item_id, transaction_type, quantity, notes, created_by, created_at
         FROM inventory_transactions
         ORDER BY created_at DESC
@@ -33,8 +33,8 @@ pub async fn get_inventory_transactions(
     .fetch_all(&state.db_pool)
     .await
     .map_err(|e| {
-        tracing::error!("Failed to fetch inventory transactions: {}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
+        error!("Failed to fetch inventory transactions: {}", e);
+        return HttpResponse::InternalServerError().json(serde_json::json!({"error": "Failed to fetch inventory transactions"}))
     })?;
 
     let transactions: Vec<InventoryTransaction> = rows.into_iter().map(|row| {
@@ -46,7 +46,7 @@ pub async fn get_inventory_transactions(
             "Transfer" => InventoryTransactionType::Transfer,
             _ => InventoryTransactionType::Adjustment,
         };
-        
+
         InventoryTransaction {
             id: row.get("id"),
             menu_item_id: row.get("menu_item_id"),
@@ -58,17 +58,19 @@ pub async fn get_inventory_transactions(
         }
     }).collect();
 
-    Ok(Json(ApiResponse::success(transactions)))
+    Ok(HttpResponse::Ok().json(ApiResponse::success(transactions)))
 }
 
 /// Get inventory transactions for a specific menu item
 pub async fn get_inventory_transactions_for_item(
-    State(state): State<AppState>,
-    Path(menu_item_id): Path<Uuid>,
-) -> Result<Json<ApiResponse<Vec<InventoryTransaction>>>, StatusCode> {
+    state: web::Data<AppState>,
+    path: web::Path<Uuid>,
+) -> Result<HttpResponse> {
+    let menu_item_id = path.into_inner();
+
     let rows = sqlx::query(
         r#"
-        SELECT 
+        SELECT
             id, menu_item_id, transaction_type, quantity, notes, created_by, created_at
         FROM inventory_transactions
         WHERE menu_item_id = $1
@@ -79,8 +81,8 @@ pub async fn get_inventory_transactions_for_item(
     .fetch_all(&state.db_pool)
     .await
     .map_err(|e| {
-        tracing::error!("Failed to fetch inventory transactions: {}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
+        error!("Failed to fetch inventory transactions: {}", e);
+        return HttpResponse::InternalServerError().json(serde_json::json!({"error": "Failed to fetch inventory transactions"}))
     })?;
 
     let transactions: Vec<InventoryTransaction> = rows.into_iter().map(|row| {
@@ -92,7 +94,7 @@ pub async fn get_inventory_transactions_for_item(
             "Transfer" => InventoryTransactionType::Transfer,
             _ => InventoryTransactionType::Adjustment,
         };
-        
+
         InventoryTransaction {
             id: row.get("id"),
             menu_item_id: row.get("menu_item_id"),
@@ -104,14 +106,14 @@ pub async fn get_inventory_transactions_for_item(
         }
     }).collect();
 
-    Ok(Json(ApiResponse::success(transactions)))
+    Ok(HttpResponse::Ok().json(ApiResponse::success(transactions)))
 }
 
 /// Create a new inventory transaction
 pub async fn create_inventory_transaction(
-    State(state): State<AppState>,
-    Json(request): Json<CreateInventoryTransactionRequest>,
-) -> Result<Json<ApiResponse<InventoryTransaction>>, StatusCode> {
+    state: web::Data<AppState>,
+    request: web::Json<CreateInventoryTransactionRequest>,
+) -> Result<HttpResponse> {
     let transaction_type_str = match request.transaction_type {
         InventoryTransactionType::StockIn => "StockIn",
         InventoryTransactionType::StockOut => "StockOut",
@@ -121,8 +123,8 @@ pub async fn create_inventory_transaction(
 
     // Start a transaction
     let mut tx = state.db_pool.begin().await.map_err(|e| {
-        tracing::error!("Failed to begin transaction: {}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
+        error!("Failed to begin transaction: {}", e);
+        return HttpResponse::InternalServerError().json(serde_json::json!({"error": "Failed to begin transaction"}))
     })?;
 
     // Create the inventory transaction
@@ -141,8 +143,8 @@ pub async fn create_inventory_transaction(
     .fetch_one(&mut *tx)
     .await
     .map_err(|e| {
-        tracing::error!("Failed to create inventory transaction: {}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
+        error!("Failed to create inventory transaction: {}", e);
+        return HttpResponse::InternalServerError().json(serde_json::json!({"error": "Failed to create inventory transaction"}))
     })?;
 
     // Update the menu item stock quantity
@@ -165,14 +167,14 @@ pub async fn create_inventory_transaction(
     .execute(&mut *tx)
     .await
     .map_err(|e| {
-        tracing::error!("Failed to update menu item stock: {}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
+        error!("Failed to update menu item stock: {}", e);
+        return HttpResponse::InternalServerError().json(serde_json::json!({"error": "Failed to update menu item stock"}))
     })?;
 
     // Commit the transaction
     tx.commit().await.map_err(|e| {
-        tracing::error!("Failed to commit transaction: {}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
+        error!("Failed to commit transaction: {}", e);
+        return HttpResponse::InternalServerError().json(serde_json::json!({"error": "Failed to commit transaction"}))
     })?;
 
     let transaction_type_str: String = row.get("transaction_type");
@@ -194,5 +196,5 @@ pub async fn create_inventory_transaction(
         created_at: row.get("created_at"),
     };
 
-    Ok(Json(ApiResponse::success(transaction)))
+    Ok(HttpResponse::Ok().json(ApiResponse::success(transaction)))
 }

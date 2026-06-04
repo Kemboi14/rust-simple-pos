@@ -1,11 +1,8 @@
 //! Customer management handlers
 
 use crate::{AppState, ApiResponse};
-use axum::{
-    extract::{Path, State},
-    http::StatusCode,
-    response::Json,
-};
+use actix_web::{web, HttpResponse, Result};
+use tracing::error;
 use serde::Deserialize;
 use sqlx::Row;
 use uuid::Uuid;
@@ -27,8 +24,8 @@ pub struct UpdateCustomerRequest {
 }
 
 pub async fn get_customers(
-    State(state): State<AppState>,
-) -> Result<Json<ApiResponse<Vec<Customer>>>, StatusCode> {
+    state: web::Data<AppState>,
+) -> Result<HttpResponse> {
     let rows = sqlx::query(
         r#"
         SELECT id, name, phone, email, loyalty_points, created_at, updated_at
@@ -39,8 +36,8 @@ pub async fn get_customers(
     .fetch_all(&state.db_pool)
     .await
     .map_err(|e| {
-        tracing::error!("Failed to fetch customers: {}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
+        error!("Failed to fetch customers: {}", e);
+        return HttpResponse::InternalServerError().json(serde_json::json!({"error": "Failed to fetch customers"}))
     })?;
 
     let customers: Vec<Customer> = rows.into_iter().map(|row| Customer {
@@ -53,13 +50,15 @@ pub async fn get_customers(
         updated_at: row.get("updated_at"),
     }).collect();
 
-    Ok(Json(ApiResponse::success(customers)))
+    Ok(HttpResponse::Ok().json(ApiResponse::success(customers)))
 }
 
 pub async fn get_customer(
-    State(state): State<AppState>,
-    Path(id): Path<Uuid>,
-) -> Result<Json<ApiResponse<Customer>>, StatusCode> {
+    state: web::Data<AppState>,
+    path: web::Path<Uuid>,
+) -> Result<HttpResponse> {
+    let id = path.into_inner();
+
     let row = sqlx::query(
         r#"
         SELECT id, name, phone, email, loyalty_points, created_at, updated_at
@@ -71,8 +70,8 @@ pub async fn get_customer(
     .fetch_optional(&state.db_pool)
     .await
     .map_err(|e| {
-        tracing::error!("Failed to fetch customer: {}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
+        error!("Failed to fetch customer: {}", e);
+        return HttpResponse::InternalServerError().json(serde_json::json!({"error": "Failed to fetch customer"}))
     })?;
 
     match row {
@@ -86,16 +85,16 @@ pub async fn get_customer(
                 created_at: row.get("created_at"),
                 updated_at: row.get("updated_at"),
             };
-            Ok(Json(ApiResponse::success(customer)))
+            Ok(HttpResponse::Ok().json(ApiResponse::success(customer)))
         }
-        None => Err(StatusCode::NOT_FOUND),
+        None => Ok(HttpResponse::NotFound().json(serde_json::json!({"error": "Customer not found"}))),
     }
 }
 
 pub async fn create_customer(
-    State(state): State<AppState>,
-    Json(request): Json<CreateCustomerRequest>,
-) -> Result<Json<ApiResponse<Customer>>, StatusCode> {
+    state: web::Data<AppState>,
+    request: web::Json<CreateCustomerRequest>,
+) -> Result<HttpResponse> {
     let row = sqlx::query(
         r#"
         INSERT INTO customers (name, phone, email, loyalty_points)
@@ -109,8 +108,8 @@ pub async fn create_customer(
     .fetch_one(&state.db_pool)
     .await
     .map_err(|e| {
-        tracing::error!("Failed to create customer: {}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
+        error!("Failed to create customer: {}", e);
+        return HttpResponse::InternalServerError().json(serde_json::json!({"error": "Failed to create customer"}))
     })?;
 
     let customer = Customer {
@@ -123,14 +122,16 @@ pub async fn create_customer(
         updated_at: row.get("updated_at"),
     };
 
-    Ok(Json(ApiResponse::success(customer)))
+    Ok(HttpResponse::Ok().json(ApiResponse::success(customer)))
 }
 
 pub async fn update_customer(
-    State(state): State<AppState>,
-    Path(id): Path<Uuid>,
-    Json(request): Json<UpdateCustomerRequest>,
-) -> Result<Json<ApiResponse<Customer>>, StatusCode> {
+    state: web::Data<AppState>,
+    path: web::Path<Uuid>,
+    request: web::Json<UpdateCustomerRequest>,
+) -> Result<HttpResponse> {
+    let id = path.into_inner();
+
     let row = sqlx::query(
         r#"
         UPDATE customers
@@ -152,8 +153,8 @@ pub async fn update_customer(
     .fetch_optional(&state.db_pool)
     .await
     .map_err(|e| {
-        tracing::error!("Failed to update customer: {}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
+        error!("Failed to update customer: {}", e);
+        return HttpResponse::InternalServerError().json(serde_json::json!({"error": "Failed to update customer"}))
     })?;
 
     match row {
@@ -167,8 +168,8 @@ pub async fn update_customer(
                 created_at: row.get("created_at"),
                 updated_at: row.get("updated_at"),
             };
-            Ok(Json(ApiResponse::success(customer)))
+            Ok(HttpResponse::Ok().json(ApiResponse::success(customer)))
         }
-        None => Err(StatusCode::NOT_FOUND),
+        None => Ok(HttpResponse::NotFound().json(serde_json::json!({"error": "Customer not found"}))),
     }
 }

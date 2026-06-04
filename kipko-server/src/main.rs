@@ -57,7 +57,7 @@ async fn main() -> anyhow::Result<()> {
         .expect("Invalid port number");
 
     let bind_address = format!("{}:{}", host, port);
-    log::info!("Starting Kipko POS server on {}", bind_address);
+    tracing::info!("Starting Kipko POS server on {}", bind_address);
 
     // Start the server
     HttpServer::new(move || {

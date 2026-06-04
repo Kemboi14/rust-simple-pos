@@ -1,11 +1,8 @@
 //! Registry handlers for tracking system events
 
 use crate::{AppState, ApiResponse};
-use axum::{
-    extract::{Path, State},
-    http::StatusCode,
-    response::Json,
-};
+use actix_web::{web, HttpResponse, Result};
+use tracing::error;
 use serde::Deserialize;
 use sqlx::Row;
 use uuid::Uuid;
@@ -23,11 +20,11 @@ pub struct CreateRegistryEntryRequest {
 
 /// Get all registry entries
 pub async fn get_registry_entries(
-    State(state): State<AppState>,
-) -> Result<Json<ApiResponse<Vec<RegistryEntry>>>, StatusCode> {
+    state: web::Data<AppState>,
+) -> Result<HttpResponse> {
     let rows = sqlx::query(
         r#"
-        SELECT 
+        SELECT
             id, entity_type, entity_id, action, details, created_by, created_at
         FROM registry_entries
         ORDER BY created_at DESC
@@ -37,8 +34,8 @@ pub async fn get_registry_entries(
     .fetch_all(&state.db_pool)
     .await
     .map_err(|e| {
-        tracing::error!("Failed to fetch registry entries: {}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
+        error!("Failed to fetch registry entries: {}", e);
+        return HttpResponse::InternalServerError().json(serde_json::json!({"error": "Failed to fetch registry entries"}))
     })?;
 
     let entries: Vec<RegistryEntry> = rows.into_iter().map(|row| RegistryEntry {
@@ -51,17 +48,19 @@ pub async fn get_registry_entries(
         created_at: row.get("created_at"),
     }).collect();
 
-    Ok(Json(ApiResponse::success(entries)))
+    Ok(HttpResponse::Ok().json(ApiResponse::success(entries)))
 }
 
 /// Get registry entries for a specific entity
 pub async fn get_registry_entries_for_entity(
-    State(state): State<AppState>,
-    Path((entity_type, entity_id)): Path<(String, Uuid)>,
-) -> Result<Json<ApiResponse<Vec<RegistryEntry>>>, StatusCode> {
+    state: web::Data<AppState>,
+    path: web::Path<(String, Uuid)>,
+) -> Result<HttpResponse> {
+    let (entity_type, entity_id) = path.into_inner();
+
     let rows = sqlx::query(
         r#"
-        SELECT 
+        SELECT
             id, entity_type, entity_id, action, details, created_by, created_at
         FROM registry_entries
         WHERE entity_type = $1 AND entity_id = $2
@@ -73,8 +72,8 @@ pub async fn get_registry_entries_for_entity(
     .fetch_all(&state.db_pool)
     .await
     .map_err(|e| {
-        tracing::error!("Failed to fetch registry entries: {}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
+        error!("Failed to fetch registry entries: {}", e);
+        return HttpResponse::InternalServerError().json(serde_json::json!({"error": "Failed to fetch registry entries"}))
     })?;
 
     let entries: Vec<RegistryEntry> = rows.into_iter().map(|row| RegistryEntry {
@@ -87,14 +86,14 @@ pub async fn get_registry_entries_for_entity(
         created_at: row.get("created_at"),
     }).collect();
 
-    Ok(Json(ApiResponse::success(entries)))
+    Ok(HttpResponse::Ok().json(ApiResponse::success(entries)))
 }
 
 /// Create a new registry entry
 pub async fn create_registry_entry(
-    State(state): State<AppState>,
-    Json(request): Json<CreateRegistryEntryRequest>,
-) -> Result<Json<ApiResponse<RegistryEntry>>, StatusCode> {
+    state: web::Data<AppState>,
+    request: web::Json<CreateRegistryEntryRequest>,
+) -> Result<HttpResponse> {
     let row = sqlx::query(
         r#"
         INSERT INTO registry_entries (entity_type, entity_id, action, details, created_by)
@@ -110,8 +109,8 @@ pub async fn create_registry_entry(
     .fetch_one(&state.db_pool)
     .await
     .map_err(|e| {
-        tracing::error!("Failed to create registry entry: {}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
+        error!("Failed to create registry entry: {}", e);
+        return HttpResponse::InternalServerError().json(serde_json::json!({"error": "Failed to create registry entry"}))
     })?;
 
     let entry = RegistryEntry {
@@ -124,5 +123,5 @@ pub async fn create_registry_entry(
         created_at: row.get("created_at"),
     };
 
-    Ok(Json(ApiResponse::success(entry)))
+    Ok(HttpResponse::Ok().json(ApiResponse::success(entry)))
 }

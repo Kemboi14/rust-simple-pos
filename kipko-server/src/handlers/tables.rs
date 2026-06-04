@@ -2,7 +2,7 @@
 
 use crate::{AppState, ApiResponse};
 use actix_web::{web, HttpResponse, Result};
-use tracing::error;
+use tracing::error as err;
 use serde::Deserialize;
 use sqlx::Row;
 use uuid::Uuid;
@@ -306,7 +306,7 @@ pub async fn clear_table(
     .fetch_optional(&state.db_pool)
     .await
     .map_err(|e| {
-        log::error!("Failed to clear table: {}", e);
+        error!("Failed to clear table: {}", e);
         return HttpResponse::InternalServerError().json(serde_json::json!({"error": "Failed to clear table"}))
     })?;
 
@@ -354,7 +354,7 @@ pub async fn clean_table(
     .fetch_optional(&state.db_pool)
     .await
     .map_err(|e| {
-        log::error!("Failed to clean table: {}", e);
+        error!("Failed to clean table: {}", e);
         return HttpResponse::InternalServerError().json(serde_json::json!({"error": "Failed to clean table"}))
     })?;
 
