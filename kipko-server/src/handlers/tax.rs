@@ -1,35 +1,31 @@
 //! Tax management handlers
 
 use crate::{AppState, ApiResponse};
-use axum::{
-    extract::State,
-    http::StatusCode,
-    response::Json,
-};
+use actix_web::{web, HttpResponse, Result};
+use tracing::error;
 use sqlx::Row;
 use kipko_core::tax::*;
 
 /// Get all tax jurisdictions
 pub async fn get_tax_jurisdictions(
-    State(state): State<AppState>,
-) -> Result<Json<ApiResponse<Vec<TaxJurisdiction>>>, StatusCode> {
+    state: web::Data<AppState>,
+) -> Result<HttpResponse> {
     let rows = sqlx::query(
         r#"
-        SELECT 
+        SELECT
             id, name, code, tax_rate, is_active,
             effective_date, expiry_date, created_at, updated_at
-        FROM tax_jurisdictions 
-        WHERE is_active = true 
+        FROM tax_jurisdictions
+        WHERE is_active = true
         ORDER BY name
         "#
     )
     .fetch_all(&state.db_pool)
     .await
     .map_err(|e| {
-        tracing::error!("Failed to fetch tax jurisdictions: {}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
+        error!("Failed to fetch tax jurisdictions: {}", e);
+        return HttpResponse::InternalServerError().json(serde_json::json!({"error": "Failed to fetch tax jurisdictions"}))
     })?;
-
     let jurisdictions: Vec<TaxJurisdiction> = rows.into_iter().map(|row| TaxJurisdiction {
         id: row.get("id"),
         name: row.get("name"),
@@ -42,28 +38,28 @@ pub async fn get_tax_jurisdictions(
         updated_at: row.get("updated_at"),
     }).collect();
 
-    Ok(Json(ApiResponse::success(jurisdictions)))
+    Ok(HttpResponse::Ok().json(ApiResponse::success(jurisdictions)))
 }
 
 /// Get all tax exemptions
 pub async fn get_tax_exemptions(
-    State(state): State<AppState>,
-) -> Result<Json<ApiResponse<Vec<TaxExemption>>>, StatusCode> {
+    state: web::Data<AppState>,
+) -> Result<HttpResponse> {
     let rows = sqlx::query(
         r#"
-        SELECT 
+        SELECT
             id, name, exemption_type, certificate_number, is_active,
             created_at, updated_at
-        FROM tax_exemptions 
-        WHERE is_active = true 
+        FROM tax_exemptions
+        WHERE is_active = true
         ORDER BY name
         "#
     )
     .fetch_all(&state.db_pool)
     .await
     .map_err(|e| {
-        tracing::error!("Failed to fetch tax exemptions: {}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
+        error!("Failed to fetch tax exemptions: {}", e);
+        return HttpResponse::InternalServerError().json(serde_json::json!({"error": "Failed to fetch tax exemptions"}))
     })?;
 
     let exemptions: Vec<TaxExemption> = rows.into_iter().map(|row| TaxExemption {
@@ -84,5 +80,5 @@ pub async fn get_tax_exemptions(
         updated_at: row.get("updated_at"),
     }).collect();
 
-    Ok(Json(ApiResponse::success(exemptions)))
+    Ok(HttpResponse::Ok().json(ApiResponse::success(exemptions)))
 }

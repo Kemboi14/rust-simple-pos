@@ -1,11 +1,8 @@
 //! Inventory management handlers
 
 use crate::{AppState, ApiResponse};
-use axum::{
-    extract::{Path, State},
-    http::StatusCode,
-    response::Json,
-};
+use actix_web::{web, HttpResponse, Result};
+use tracing::error;
 use serde::Deserialize;
 use sqlx::Row;
 use uuid::Uuid;

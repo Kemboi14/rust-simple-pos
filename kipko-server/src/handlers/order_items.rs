@@ -1,11 +1,8 @@
 //! Order items management handlers
 
 use crate::{AppState, ApiResponse};
-use axum::{
-    extract::{Path, State},
-    http::StatusCode,
-    response::Json,
-};
+use actix_web::{web, HttpResponse, Result};
+use tracing::error;
 use serde::Deserialize;
 use sqlx::Row;
 use uuid::Uuid;
@@ -26,9 +23,11 @@ pub struct UpdateOrderItemRequest {
 }
 
 pub async fn get_order_items(
-    State(state): State<AppState>,
-    Path(order_id): Path<Uuid>,
-) -> Result<Json<ApiResponse<Vec<OrderItem>>>, axum::http::StatusCode> {
+    state: web::Data<AppState>,
+    path: web::Path<Uuid>,
+) -> Result<HttpResponse> {
+    let order_id = path.into_inner();
+
     let rows = sqlx::query(
         r#"
         SELECT id, order_id, menu_item_id, quantity, unit_price, status, notes, void_reason, void_by, created_at, updated_at
@@ -41,8 +40,8 @@ pub async fn get_order_items(
     .fetch_all(&state.db_pool)
     .await
     .map_err(|e| {
-        tracing::error!("Failed to fetch order items: {}", e);
-        axum::http::StatusCode::INTERNAL_SERVER_ERROR
+        error!("Failed to fetch order items: {}", e);
+        return HttpResponse::InternalServerError().json(serde_json::json!({"error": "Failed to fetch order items"}))
     })?;
 
     let items: Vec<OrderItem> = rows
@@ -76,14 +75,16 @@ pub async fn get_order_items(
         })
         .collect();
 
-    Ok(Json(ApiResponse::success(items)))
+    Ok(HttpResponse::Ok().json(ApiResponse::success(items)))
 }
 
 pub async fn add_order_item(
-    State(state): State<AppState>,
-    Path(order_id): Path<Uuid>,
-    Json(request): Json<AddOrderItemRequest>,
-) -> Result<Json<ApiResponse<OrderItem>>, axum::http::StatusCode> {
+    state: web::Data<AppState>,
+    path: web::Path<Uuid>,
+    request: web::Json<AddOrderItemRequest>,
+) -> Result<HttpResponse> {
+    let order_id = path.into_inner();
+
     // Get menu item price
     let menu_item_row = sqlx::query(
         "SELECT price FROM menu_items WHERE id = $1"
@@ -92,12 +93,12 @@ pub async fn add_order_item(
     .fetch_optional(&state.db_pool)
     .await
     .map_err(|e| {
-        tracing::error!("Failed to fetch menu item: {}", e);
-        axum::http::StatusCode::INTERNAL_SERVER_ERROR
+        error!("Failed to fetch menu item: {}", e);
+        return HttpResponse::InternalServerError().json(serde_json::json!({"error": "Failed to fetch menu item"}))
     })?
     .ok_or_else(|| {
-        tracing::error!("Menu item not found");
-        axum::http::StatusCode::NOT_FOUND
+        error!("Menu item not found");
+        return HttpResponse::NotFound().json(serde_json::json!({"error": "Menu item not found"}))
     })?;
 
     let price: rust_decimal::Decimal = menu_item_row.get("price");
@@ -117,8 +118,8 @@ pub async fn add_order_item(
     .fetch_one(&state.db_pool)
     .await
     .map_err(|e| {
-        tracing::error!("Failed to add order item: {}", e);
-        axum::http::StatusCode::INTERNAL_SERVER_ERROR
+        error!("Failed to add order item: {}", e);
+        return HttpResponse::InternalServerError().json(serde_json::json!({"error": "Failed to add order item"}))
     })?;
 
     let currency = kipko_core::money::currencies::ksh();
@@ -136,14 +137,16 @@ pub async fn add_order_item(
         updated_at: row.get("updated_at"),
     };
 
-    Ok(Json(ApiResponse::success(item)))
+    Ok(HttpResponse::Ok().json(ApiResponse::success(item)))
 }
 
 pub async fn update_order_item(
-    State(state): State<AppState>,
-    Path((order_id, item_id)): Path<(Uuid, Uuid)>,
-    Json(request): Json<UpdateOrderItemRequest>,
-) -> Result<Json<ApiResponse<OrderItem>>, axum::http::StatusCode> {
+    state: web::Data<AppState>,
+    path: web::Path<(Uuid, Uuid)>,
+    request: web::Json<UpdateOrderItemRequest>,
+) -> Result<HttpResponse> {
+    let (order_id, item_id) = path.into_inner();
+
     let row = sqlx::query(
         r#"
         UPDATE order_items
@@ -164,8 +167,8 @@ pub async fn update_order_item(
     .fetch_optional(&state.db_pool)
     .await
     .map_err(|e| {
-        tracing::error!("Failed to update order item: {}", e);
-        axum::http::StatusCode::INTERNAL_SERVER_ERROR
+        error!("Failed to update order item: {}", e);
+        return HttpResponse::InternalServerError().json(serde_json::json!({"error": "Failed to update order item"}))
     })?;
 
     match row {
@@ -191,16 +194,18 @@ pub async fn update_order_item(
                 created_at: row.get("created_at"),
                 updated_at: row.get("updated_at"),
             };
-            Ok(Json(ApiResponse::success(item)))
+            Ok(HttpResponse::Ok().json(ApiResponse::success(item)))
         }
-        None => Err(axum::http::StatusCode::NOT_FOUND),
+        None => Ok(HttpResponse::NotFound().json(serde_json::json!({"error": "Order item not found"}))),
     }
 }
 
 pub async fn delete_order_item(
-    State(state): State<AppState>,
-    Path((order_id, item_id)): Path<(Uuid, Uuid)>,
-) -> Result<Json<ApiResponse<()>>, axum::http::StatusCode> {
+    state: web::Data<AppState>,
+    path: web::Path<(Uuid, Uuid)>,
+) -> Result<HttpResponse> {
+    let (order_id, item_id) = path.into_inner();
+
     let result = sqlx::query(
         "DELETE FROM order_items WHERE id = $1 AND order_id = $2"
     )
@@ -209,13 +214,13 @@ pub async fn delete_order_item(
     .execute(&state.db_pool)
     .await
     .map_err(|e| {
-        tracing::error!("Failed to delete order item: {}", e);
-        axum::http::StatusCode::INTERNAL_SERVER_ERROR
+        error!("Failed to delete order item: {}", e);
+        return HttpResponse::InternalServerError().json(serde_json::json!({"error": "Failed to delete order item"}))
     })?;
 
     if result.rows_affected() == 0 {
-        return Err(axum::http::StatusCode::NOT_FOUND);
+        return Ok(HttpResponse::NotFound().json(serde_json::json!({"error": "Order item not found"})));
     }
 
-    Ok(Json(ApiResponse::success(())))
+    Ok(HttpResponse::Ok().json(ApiResponse::success(())))
 }

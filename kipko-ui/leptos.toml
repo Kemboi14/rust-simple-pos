@@ -1,0 +1,21 @@
+[package]
+cargo-leptos = "0.2"
+
+[site]
+site-root = "target/site"
+site-pkg-dir = "pkg"
+site-addr = "127.0.0.1:3000"
+reload-port = 3001
+
+[build]
+release = false
+# Use the system wasm-opt for better optimization
+wasm-opt = false
+
+[clean]
+watch = true
+dist = "pkg"
+
+[serve]
+watch = true
+hot-reload = true

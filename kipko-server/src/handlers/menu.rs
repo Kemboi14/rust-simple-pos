@@ -1,11 +1,8 @@
 //! Menu management handlers
 
 use crate::{AppState, ApiResponse};
-use axum::{
-    extract::{Path, State},
-    http::StatusCode,
-    response::Json,
-};
+use actix_web::{web, HttpResponse, Result};
+use tracing::error;
 use serde::Deserialize;
 use sqlx::Row;
 use uuid::Uuid;
@@ -53,12 +50,12 @@ pub struct CreateCategoryRequest {
 
 /// Get all menu categories
 pub async fn get_menu_categories(
-    State(state): State<AppState>,
-) -> Result<Json<ApiResponse<Vec<MenuItemCategory>>>, StatusCode> {
+    state: web::Data<AppState>,
+) -> Result<HttpResponse> {
     let rows = sqlx::query(
         r#"
         SELECT id, name, description, display_order, created_at, updated_at
-        FROM menu_item_categories 
+        FROM menu_item_categories
         ORDER BY display_order, name
         "#
     )
@@ -66,7 +63,7 @@ pub async fn get_menu_categories(
     .await
     .map_err(|e| {
         tracing::error!("Failed to fetch menu categories: {}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
+        return HttpResponse::InternalServerError().json(serde_json::json!({"error": "Failed to fetch menu categories"}))
     })?;
 
     let categories: Vec<MenuItemCategory> = rows.into_iter().map(|row| MenuItemCategory {
@@ -78,13 +75,13 @@ pub async fn get_menu_categories(
         updated_at: row.get("updated_at"),
     }).collect();
 
-    Ok(Json(ApiResponse::success(categories)))
+    Ok(HttpResponse::Ok().json(ApiResponse::success(categories)))
 }
 
 /// Get all menu items
 pub async fn get_menu_items(
-    State(state): State<AppState>,
-) -> Result<Json<ApiResponse<Vec<MenuItem>>>, StatusCode> {
+    state: web::Data<AppState>,
+) -> Result<HttpResponse> {
     let rows = sqlx::query(
         r#"
         SELECT
@@ -100,8 +97,8 @@ pub async fn get_menu_items(
     .fetch_all(&state.db_pool)
     .await
     .map_err(|e| {
-        tracing::error!("Failed to fetch menu items: {}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
+        error!("Failed to fetch menu items: {}", e);
+        return HttpResponse::InternalServerError().json(serde_json::json!({"error": "Failed to fetch menu items"}))
     })?;
 
     let items: Vec<MenuItem> = rows.into_iter().map(|row| MenuItem {
@@ -121,14 +118,16 @@ pub async fn get_menu_items(
         updated_at: row.get("updated_at"),
     }).collect();
 
-    Ok(Json(ApiResponse::success(items)))
+    Ok(HttpResponse::Ok().json(ApiResponse::success(items)))
 }
 
 /// Get a single menu item by ID
 pub async fn get_menu_item(
-    State(state): State<AppState>,
-    Path(id): Path<Uuid>,
-) -> Result<Json<ApiResponse<MenuItem>>, StatusCode> {
+    state: web::Data<AppState>,
+    path: web::Path<Uuid>,
+) -> Result<HttpResponse> {
+    let id = path.into_inner();
+
     let row = sqlx::query(
         r#"
         SELECT
@@ -145,8 +144,8 @@ pub async fn get_menu_item(
     .fetch_optional(&state.db_pool)
     .await
     .map_err(|e| {
-        tracing::error!("Failed to fetch menu item: {}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
+        error!("Failed to fetch menu item: {}", e);
+        return HttpResponse::InternalServerError().json(serde_json::json!({"error": "Failed to fetch menu item"}))
     })?;
 
     match row {
@@ -167,17 +166,17 @@ pub async fn get_menu_item(
                 created_at: row.get("created_at"),
                 updated_at: row.get("updated_at"),
             };
-            Ok(Json(ApiResponse::success(item)))
+            Ok(HttpResponse::Ok().json(ApiResponse::success(item)))
         },
-        None => Err(StatusCode::NOT_FOUND),
+        None => Ok(HttpResponse::NotFound().json(serde_json::json!({"error": "Menu item not found"}))),
     }
 }
 
 /// Create a new menu item
 pub async fn create_menu_item(
-    State(state): State<AppState>,
-    Json(request): Json<CreateMenuItemRequest>,
-) -> Result<Json<ApiResponse<MenuItem>>, StatusCode> {
+    state: web::Data<AppState>,
+    request: web::Json<CreateMenuItemRequest>,
+) -> Result<HttpResponse> {
     let row = sqlx::query(
         r#"
         INSERT INTO menu_items (category_id, name, description, price, tax_rate, preparation_time_minutes, display_order, image_url, stock_quantity, low_stock_threshold)
@@ -203,8 +202,8 @@ pub async fn create_menu_item(
     .fetch_one(&state.db_pool)
     .await
     .map_err(|e| {
-        tracing::error!("Failed to create menu item: {}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
+        error!("Failed to create menu item: {}", e);
+        return HttpResponse::InternalServerError().json(serde_json::json!({"error": "Failed to create menu item"}))
     })?;
 
     let item = MenuItem {
@@ -224,15 +223,17 @@ pub async fn create_menu_item(
         updated_at: row.get("updated_at"),
     };
 
-    Ok(Json(ApiResponse::success(item)))
+    Ok(HttpResponse::Ok().json(ApiResponse::success(item)))
 }
 
 /// Update a menu item
 pub async fn update_menu_item(
-    State(state): State<AppState>,
-    Path(id): Path<Uuid>,
-    Json(request): Json<UpdateMenuItemRequest>,
-) -> Result<Json<ApiResponse<MenuItem>>, StatusCode> {
+    state: web::Data<AppState>,
+    path: web::Path<Uuid>,
+    request: web::Json<UpdateMenuItemRequest>,
+) -> Result<HttpResponse> {
+    let id = path.into_inner();
+
     let row = sqlx::query(
         r#"
         UPDATE menu_items
@@ -273,8 +274,8 @@ pub async fn update_menu_item(
     .fetch_optional(&state.db_pool)
     .await
     .map_err(|e| {
-        tracing::error!("Failed to update menu item: {}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
+        error!("Failed to update menu item: {}", e);
+        return HttpResponse::InternalServerError().json(serde_json::json!({"error": "Failed to update menu item"}))
     })?;
 
     match row {
@@ -295,17 +296,19 @@ pub async fn update_menu_item(
                 created_at: row.get("created_at"),
                 updated_at: row.get("updated_at"),
             };
-            Ok(Json(ApiResponse::success(item)))
+            Ok(HttpResponse::Ok().json(ApiResponse::success(item)))
         },
-        None => Err(StatusCode::NOT_FOUND),
+        None => Ok(HttpResponse::NotFound().json(serde_json::json!({"error": "Menu item not found"}))),
     }
 }
 
 /// Delete a menu item
 pub async fn delete_menu_item(
-    State(state): State<AppState>,
-    Path(id): Path<Uuid>,
-) -> Result<StatusCode, StatusCode> {
+    state: web::Data<AppState>,
+    path: web::Path<Uuid>,
+) -> Result<HttpResponse> {
+    let id = path.into_inner();
+
     let result = sqlx::query(
         "DELETE FROM menu_items WHERE id = $1"
     )
@@ -313,13 +316,13 @@ pub async fn delete_menu_item(
     .execute(&state.db_pool)
     .await
     .map_err(|e| {
-        tracing::error!("Failed to delete menu item: {}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
+        error!("Failed to delete menu item: {}", e);
+        return HttpResponse::InternalServerError().json(serde_json::json!({"error": "Failed to delete menu item"}))
     })?;
 
     if result.rows_affected() > 0 {
-        Ok(StatusCode::NO_CONTENT)
+        Ok(HttpResponse::NoContent().finish())
     } else {
-        Err(StatusCode::NOT_FOUND)
+        Ok(HttpResponse::NotFound().json(serde_json::json!({"error": "Menu item not found"})))
     }
 }

@@ -1,0 +1,12 @@
+{
+  "name": "kipko-ui",
+  "version": "0.1.0",
+  "scripts": {
+    "build": "wasm-pack build --target web",
+    "dev": "wasm-pack build --target web --dev",
+    "start": "cargo leptos watch"
+  },
+  "devDependencies": {
+    "wasm-pack": "^0.12.0"
+  }
+}

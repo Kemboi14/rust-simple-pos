@@ -1,11 +1,8 @@
 //! Order management handlers
 
 use crate::{AppState, ApiResponse};
-use axum::{
-    extract::{Path, State},
-    http::StatusCode,
-    response::Json,
-};
+use actix_web::{web, HttpResponse, Result};
+use tracing::error;
 use serde::Deserialize;
 use sqlx::Row;
 use uuid::Uuid;
@@ -52,11 +49,11 @@ pub struct CalculateTaxRequest {
 
 /// Get all orders
 pub async fn get_orders(
-    State(state): State<AppState>,
-) -> Result<Json<ApiResponse<Vec<Order>>>, StatusCode> {
+    state: web::Data<AppState>,
+) -> Result<HttpResponse> {
     let rows = sqlx::query(
         r#"
-        SELECT 
+        SELECT
             id, table_id, staff_id, status::text as status, order_type::text as order_type,
             subtotal, tax_amount, total_amount,
             delivery_address, delivery_fee, customer_id, location_id,
@@ -69,7 +66,7 @@ pub async fn get_orders(
     .await
     .map_err(|e| {
         tracing::error!("Failed to fetch orders: {}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
+        return HttpResponse::InternalServerError().json(serde_json::json!({"error": "Failed to fetch orders"}))
     })?;
 
     let currency = kipko_core::money::currencies::ksh();
@@ -99,17 +96,19 @@ pub async fn get_orders(
         updated_at: row.get("updated_at"),
     }).collect();
 
-    Ok(Json(ApiResponse::success(orders)))
+    Ok(HttpResponse::Ok().json(ApiResponse::success(orders)))
 }
 
 /// Get a single order by ID
 pub async fn get_order(
-    State(state): State<AppState>,
-    Path(id): Path<Uuid>,
-) -> Result<Json<ApiResponse<Order>>, StatusCode> {
+    state: web::Data<AppState>,
+    path: web::Path<Uuid>,
+) -> Result<HttpResponse> {
+    let id = path.into_inner();
+
     let row = sqlx::query(
         r#"
-        SELECT 
+        SELECT
             id, table_id, staff_id, status::text as status, order_type::text as order_type,
             subtotal, tax_amount, total_amount,
             delivery_address, delivery_fee, customer_id, location_id,
@@ -122,8 +121,8 @@ pub async fn get_order(
     .fetch_optional(&state.db_pool)
     .await
     .map_err(|e| {
-        tracing::error!("Failed to fetch order: {}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
+        error!("Failed to fetch order: {}", e);
+        return HttpResponse::InternalServerError().json(serde_json::json!({"error": "Failed to fetch order"}))
     })?;
 
     match row {
@@ -154,9 +153,9 @@ pub async fn get_order(
                 created_at: row.get("created_at"),
                 updated_at: row.get("updated_at"),
             };
-            Ok(Json(ApiResponse::success(order)))
+            Ok(HttpResponse::Ok().json(ApiResponse::success(order)))
         },
-        None => Err(StatusCode::NOT_FOUND),
+        None => Ok(HttpResponse::NotFound().json(serde_json::json!({"error": "Order not found"}))),
     }
 }
 

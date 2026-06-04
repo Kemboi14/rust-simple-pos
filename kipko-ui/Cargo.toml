@@ -1,15 +1,10 @@
 [package]
 name = "kipko-ui"
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
 
-[[bin]]
-name = "kipko-ui-simple"
-path = "src/main_simple.rs"
-
-[[bin]]
-name = "kipko-ui"
-path = "src/main.rs"
+[lib]
+crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 # Core workspace dependencies
@@ -17,36 +12,36 @@ rust_decimal = { workspace = true }
 rust_decimal_macros = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-uuid = { workspace = true, features = ["js"] }
-chrono = { workspace = true }
+uuid = { workspace = true, features = ["js", "serde"] }
+chrono = { workspace = true, features = ["serde", "wasmbind"] }
 thiserror = { workspace = true }
 anyhow = { workspace = true }
 
-# UI dependencies
-dioxus = { workspace = true, features = ["web"] }
+# Leptos dependencies
+leptos = { workspace = true }
+leptos_meta = { workspace = true }
+leptos_actix = { workspace = true, optional = true }
 
-# Web server dependencies (only for native builds, not WASM)
-axum = { workspace = true, optional = true }
-tokio = { version = "1.0", features = ["rt-multi-thread", "macros"], optional = true }
-tower = { workspace = true, optional = true }
-tower-http = { workspace = true, optional = true }
+# WebAssembly dependencies
+wasm-bindgen = { workspace = true }
+console_log = { workspace = true }
+log = { workspace = true }
+console_error_panic_hook = { workspace = true }
+gloo-net = { workspace = true, features = ["http"] }
+gloo-storage = { workspace = true }
+web-sys = { workspace = true }
+js-sys = { workspace = true }
+wasm-bindgen-futures = { workspace = true }
+getrandom = { version = "0.2", features = ["js"] }
 
 # Internal dependencies
 kipko-core = { path = "../kipko-core", default-features = false, features = [] }
-
-# WebAssembly dependencies
-getrandom = { version = "0.2", features = ["js"] }
-wasm-bindgen-futures = "0.4"
-wasm-bindgen = "0.2"
-web-sys = { version = "0.3", features = ["Headers", "Request", "RequestInit", "RequestMode", "Response", "Window"] }
-js-sys = "0.3"
-# Force ahash to use older version compatible with getrandom 0.2
-ahash = { version = "=0.8.7", default-features = false, features = ["runtime-rng"] }
 
 # QR code generation
 qrcode = "0.14"
 base64 = "0.21"
 
 [features]
-default = []
-server = ["axum", "tokio", "tower", "tower-http"]
+default = ["leptos_actix"]
+hydrate = ["leptos/hydrate", "leptos_meta/hydrate"]
+ssr = ["leptos/ssr", "leptos_meta/ssr", "leptos_actix"]

@@ -1,11 +1,8 @@
 //! Table management handlers
 
 use crate::{AppState, ApiResponse};
-use axum::{
-    extract::{Path, State},
-    http::StatusCode,
-    response::Json,
-};
+use actix_web::{web, HttpResponse, Result};
+use tracing::error;
 use serde::Deserialize;
 use sqlx::Row;
 use uuid::Uuid;
@@ -30,14 +27,14 @@ pub struct UpdateTableRequest {
 
 /// Get all tables
 pub async fn get_tables(
-    State(state): State<AppState>,
-) -> Result<Json<ApiResponse<Vec<Table>>>, StatusCode> {
+    state: web::Data<AppState>,
+) -> Result<HttpResponse> {
     let rows = sqlx::query(
         r#"
-        SELECT 
+        SELECT
             id, number, capacity, status::text, location,
             created_at, updated_at
-        FROM tables 
+        FROM tables
         ORDER BY number
         "#
     )
@@ -45,7 +42,7 @@ pub async fn get_tables(
     .await
     .map_err(|e| {
         tracing::error!("Failed to fetch tables: {}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
+        return HttpResponse::InternalServerError().json(serde_json::json!({"error": "Failed to fetch tables"}))
     })?;
 
     let tables: Vec<Table> = rows.into_iter().map(|row| Table {
@@ -64,20 +61,22 @@ pub async fn get_tables(
         updated_at: row.get("updated_at"),
     }).collect();
 
-    Ok(Json(ApiResponse::success(tables)))
+    Ok(HttpResponse::Ok().json(ApiResponse::success(tables)))
 }
 
 /// Get a single table by ID
 pub async fn get_table(
-    State(state): State<AppState>,
-    Path(id): Path<Uuid>,
-) -> Result<Json<ApiResponse<Table>>, StatusCode> {
+    state: web::Data<AppState>,
+    path: web::Path<Uuid>,
+) -> Result<HttpResponse> {
+    let id = path.into_inner();
+
     let row = sqlx::query(
         r#"
-        SELECT 
+        SELECT
             id, number, capacity, status::text, location,
             created_at, updated_at
-        FROM tables 
+        FROM tables
         WHERE id = $1
         "#
     )
@@ -85,8 +84,8 @@ pub async fn get_table(
     .fetch_optional(&state.db_pool)
     .await
     .map_err(|e| {
-        tracing::error!("Failed to fetch table: {}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
+        error!("Failed to fetch table: {}", e);
+        return HttpResponse::InternalServerError().json(serde_json::json!({"error": "Failed to fetch table"}))
     })?;
 
     match row {
@@ -106,22 +105,22 @@ pub async fn get_table(
                 created_at: row.get("created_at"),
                 updated_at: row.get("updated_at"),
             };
-            Ok(Json(ApiResponse::success(table)))
+            Ok(HttpResponse::Ok().json(ApiResponse::success(table)))
         },
-        None => Err(StatusCode::NOT_FOUND),
+        None => Ok(HttpResponse::NotFound().json(serde_json::json!({"error": "Table not found"}))),
     }
 }
 
 /// Create a new table
 pub async fn create_table(
-    State(state): State<AppState>,
-    Json(request): Json<CreateTableRequest>,
-) -> Result<Json<ApiResponse<Table>>, StatusCode> {
+    state: web::Data<AppState>,
+    request: web::Json<CreateTableRequest>,
+) -> Result<HttpResponse> {
     let row = sqlx::query(
         r#"
         INSERT INTO tables (number, capacity, location)
         VALUES ($1, $2, $3)
-        RETURNING 
+        RETURNING
             id, number, capacity, status::text, location,
             created_at, updated_at
         "#
@@ -132,8 +131,8 @@ pub async fn create_table(
     .fetch_one(&state.db_pool)
     .await
     .map_err(|e| {
-        tracing::error!("Failed to create table: {}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
+        error!("Failed to create table: {}", e);
+        return HttpResponse::InternalServerError().json(serde_json::json!({"error": "Failed to create table"}))
     })?;
 
     let table = Table {
@@ -152,26 +151,28 @@ pub async fn create_table(
         updated_at: row.get("updated_at"),
     };
 
-    Ok(Json(ApiResponse::success(table)))
+    Ok(HttpResponse::Ok().json(ApiResponse::success(table)))
 }
 
 /// Update a table
 pub async fn update_table(
-    State(state): State<AppState>,
-    Path(id): Path<Uuid>,
-    Json(request): Json<UpdateTableRequest>,
-) -> Result<Json<ApiResponse<Table>>, StatusCode> {
+    state: web::Data<AppState>,
+    path: web::Path<Uuid>,
+    request: web::Json<UpdateTableRequest>,
+) -> Result<HttpResponse> {
+    let id = path.into_inner();
+
     let row = sqlx::query(
         r#"
-        UPDATE tables 
-        SET 
+        UPDATE tables
+        SET
             number = COALESCE($2, number),
             capacity = COALESCE($3, capacity),
             status = COALESCE($4, status),
             location = COALESCE($5, location),
             updated_at = CURRENT_TIMESTAMP
         WHERE id = $1
-        RETURNING 
+        RETURNING
             id, number, capacity, status::text, location,
             created_at, updated_at
         "#
@@ -184,8 +185,8 @@ pub async fn update_table(
     .fetch_optional(&state.db_pool)
     .await
     .map_err(|e| {
-        tracing::error!("Failed to update table: {}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
+        error!("Failed to update table: {}", e);
+        return HttpResponse::InternalServerError().json(serde_json::json!({"error": "Failed to update table"}))
     })?;
 
     match row {
@@ -205,17 +206,19 @@ pub async fn update_table(
                 created_at: row.get("created_at"),
                 updated_at: row.get("updated_at"),
             };
-            Ok(Json(ApiResponse::success(table)))
+            Ok(HttpResponse::Ok().json(ApiResponse::success(table)))
         },
-        None => Err(StatusCode::NOT_FOUND),
+        None => Ok(HttpResponse::NotFound().json(serde_json::json!({"error": "Table not found"}))),
     }
 }
 
 /// Delete a table
 pub async fn delete_table(
-    State(state): State<AppState>,
-    Path(id): Path<Uuid>,
-) -> Result<StatusCode, StatusCode> {
+    state: web::Data<AppState>,
+    path: web::Path<Uuid>,
+) -> Result<HttpResponse> {
+    let id = path.into_inner();
+
     let result = sqlx::query(
         "DELETE FROM tables WHERE id = $1"
     )
@@ -223,28 +226,30 @@ pub async fn delete_table(
     .execute(&state.db_pool)
     .await
     .map_err(|e| {
-        tracing::error!("Failed to delete table: {}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
+        error!("Failed to delete table: {}", e);
+        return HttpResponse::InternalServerError().json(serde_json::json!({"error": "Failed to delete table"}))
     })?;
 
     if result.rows_affected() > 0 {
-        Ok(StatusCode::NO_CONTENT)
+        Ok(HttpResponse::NoContent().finish())
     } else {
-        Err(StatusCode::NOT_FOUND)
+        Ok(HttpResponse::NotFound().json(serde_json::json!({"error": "Table not found"})))
     }
 }
 
 /// Occupy a table
 pub async fn occupy_table(
-    State(state): State<AppState>,
-    Path(id): Path<Uuid>,
-) -> Result<Json<ApiResponse<Table>>, StatusCode> {
+    state: web::Data<AppState>,
+    path: web::Path<Uuid>,
+) -> Result<HttpResponse> {
+    let id = path.into_inner();
+
     let row = sqlx::query(
         r#"
-        UPDATE tables 
+        UPDATE tables
         SET status = 'Occupied', updated_at = CURRENT_TIMESTAMP
         WHERE id = $1 AND status IN ('Empty', 'Dirty')
-        RETURNING 
+        RETURNING
             id, number, capacity, status::text, location,
             created_at, updated_at
         "#
@@ -253,8 +258,8 @@ pub async fn occupy_table(
     .fetch_optional(&state.db_pool)
     .await
     .map_err(|e| {
-        tracing::error!("Failed to occupy table: {}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
+        error!("Failed to occupy table: {}", e);
+        return HttpResponse::InternalServerError().json(serde_json::json!({"error": "Failed to occupy table"}))
     })?;
 
     match row {
@@ -274,23 +279,25 @@ pub async fn occupy_table(
                 created_at: row.get("created_at"),
                 updated_at: row.get("updated_at"),
             };
-            Ok(Json(ApiResponse::success(table)))
+            Ok(HttpResponse::Ok().json(ApiResponse::success(table)))
         },
-        None => Err(StatusCode::BAD_REQUEST),
+        None => Ok(HttpResponse::BadRequest().json(serde_json::json!({"error": "Table cannot be occupied in current status"}))),
     }
 }
 
 /// Clear a table
 pub async fn clear_table(
-    State(state): State<AppState>,
-    Path(id): Path<Uuid>,
-) -> Result<Json<ApiResponse<Table>>, StatusCode> {
+    state: web::Data<AppState>,
+    path: web::Path<Uuid>,
+) -> Result<HttpResponse> {
+    let id = path.into_inner();
+
     let row = sqlx::query(
         r#"
-        UPDATE tables 
+        UPDATE tables
         SET status = 'Dirty', updated_at = CURRENT_TIMESTAMP
         WHERE id = $1 AND status = 'Occupied'
-        RETURNING 
+        RETURNING
             id, number, capacity, status::text, location,
             created_at, updated_at
         "#
@@ -299,8 +306,8 @@ pub async fn clear_table(
     .fetch_optional(&state.db_pool)
     .await
     .map_err(|e| {
-        tracing::error!("Failed to clear table: {}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
+        log::error!("Failed to clear table: {}", e);
+        return HttpResponse::InternalServerError().json(serde_json::json!({"error": "Failed to clear table"}))
     })?;
 
     match row {
@@ -320,23 +327,25 @@ pub async fn clear_table(
                 created_at: row.get("created_at"),
                 updated_at: row.get("updated_at"),
             };
-            Ok(Json(ApiResponse::success(table)))
+            Ok(HttpResponse::Ok().json(ApiResponse::success(table)))
         },
-        None => Err(StatusCode::BAD_REQUEST),
+        None => Ok(HttpResponse::BadRequest().json(serde_json::json!({"error": "Table cannot be cleared in current status"}))),
     }
 }
 
 /// Clean a table
 pub async fn clean_table(
-    State(state): State<AppState>,
-    Path(id): Path<Uuid>,
-) -> Result<Json<ApiResponse<Table>>, StatusCode> {
+    state: web::Data<AppState>,
+    path: web::Path<Uuid>,
+) -> Result<HttpResponse> {
+    let id = path.into_inner();
+
     let row = sqlx::query(
         r#"
-        UPDATE tables 
+        UPDATE tables
         SET status = 'Empty', updated_at = CURRENT_TIMESTAMP
         WHERE id = $1 AND status = 'Dirty'
-        RETURNING 
+        RETURNING
             id, number, capacity, status::text, location,
             created_at, updated_at
         "#
@@ -345,8 +354,8 @@ pub async fn clean_table(
     .fetch_optional(&state.db_pool)
     .await
     .map_err(|e| {
-        tracing::error!("Failed to clean table: {}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
+        log::error!("Failed to clean table: {}", e);
+        return HttpResponse::InternalServerError().json(serde_json::json!({"error": "Failed to clean table"}))
     })?;
 
     match row {
@@ -366,8 +375,8 @@ pub async fn clean_table(
                 created_at: row.get("created_at"),
                 updated_at: row.get("updated_at"),
             };
-            Ok(Json(ApiResponse::success(table)))
+            Ok(HttpResponse::Ok().json(ApiResponse::success(table)))
         },
-        None => Err(StatusCode::BAD_REQUEST),
+        None => Ok(HttpResponse::BadRequest().json(serde_json::json!({"error": "Table cannot be cleaned in current status"}))),
     }
 }

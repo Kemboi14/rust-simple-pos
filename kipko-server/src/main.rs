@@ -1,22 +1,18 @@
 //! Kipko POS Server
-//! 
+//!
 //! This is the main server application for the Kipko Point of Sale system.
-//! It provides REST API endpoints for managing restaurant operations.
+//! It provides REST API endpoints for managing restaurant operations using Actix-web.
 
-use axum::{
-    routing::{get, post, put},
-    Router,
-};
-use axum::http::StatusCode;
-use axum::response::Json;
+use actix_web::{web, App, HttpServer, HttpResponse, Responder, Result};
+use actix_cors::Cors;
+use actix_web::middleware::Logger;
 use sqlx::postgres::PgPoolOptions;
-use std::net::SocketAddr;
-use tower::ServiceBuilder;
-use tower_http::cors::CorsLayer;
+use env_logger::Env;
 
 mod handlers;
 mod models;
 mod database;
+mod services;
 
 use handlers::*;
 
@@ -25,10 +21,10 @@ pub struct AppState {
     pub db_pool: sqlx::PgPool,
 }
 
-#[tokio::main]
+#[actix_web::main]
 async fn main() -> anyhow::Result<()> {
     // Initialize logging
-    tracing_subscriber::fmt::init();
+    env_logger::init_from_env(Env::default().default_filter_or("info"));
 
     // Load environment variables
     dotenvy::dotenv().ok();
@@ -51,98 +47,149 @@ async fn main() -> anyhow::Result<()> {
         .expect("Failed to run database migrations");
 
     // Create application state
-    let app_state = AppState { db_pool };
-
-    // Build the application router
-    let app = Router::new()
-        // Health check endpoint
-        .route("/health", get(health_check))
-        
-        // Tables endpoints
-        .route("/tables", get(get_tables).post(create_table))
-        .route("/tables/:id", get(get_table).put(update_table).delete(delete_table))
-        .route("/tables/:id/occupy", post(occupy_table))
-        .route("/tables/:id/clear", post(clear_table))
-        .route("/tables/:id/clean", post(clean_table))
-        
-        // Menu items endpoints
-        .route("/menu/categories", get(get_menu_categories))
-        .route("/menu/items", get(get_menu_items).post(create_menu_item))
-        .route("/menu/items/:id", get(get_menu_item).put(update_menu_item).delete(delete_menu_item))
-        
-        // Orders endpoints
-        .route("/orders", get(get_orders).post(create_order))
-        .route("/orders/:id", get(get_order).put(update_order).delete(delete_order))
-        .route("/orders/:id/items", get(handlers::order_items::get_order_items).post(handlers::order_items::add_order_item))
-        .route("/orders/:id/items/:item_id", put(handlers::order_items::update_order_item).delete(handlers::order_items::delete_order_item))
-        .route("/orders/:id/calculate-tax", post(calculate_order_tax))
-        .route("/orders/:id/close", post(close_order))
-
-        // Payments endpoints
-        .route("/payments", get(get_payments).post(create_payment))
-        .route("/payments/:id", get(get_payment))
-        .route("/payments/:id/complete", post(handlers::payments::complete_payment))
-        .route("/orders/:order_id/payments", get(handlers::payments::get_order_payments))
-
-        // Customers endpoints
-        .route("/customers", get(handlers::customers::get_customers).post(handlers::customers::create_customer))
-        .route("/customers/:id", get(handlers::customers::get_customer).put(handlers::customers::update_customer))
-
-        // Reservations endpoints
-        .route("/reservations", get(handlers::reservations::get_reservations).post(handlers::reservations::create_reservation))
-        .route("/reservations/:id", get(handlers::reservations::get_reservation).put(handlers::reservations::update_reservation))
-        
-        // Staff endpoints
-        .route("/staff", get(get_staff).post(create_staff))
-        .route("/staff/:id", get(get_staff_member).put(update_staff).delete(delete_staff))
-        
-        // Accounting endpoints
-        .route("/accounting/transactions", get(get_transactions))
-        .route("/accounting/accounts", get(get_accounts))
-        .route("/accounting/balances", get(get_account_balances))
-        
-        // Tax endpoints
-        .route("/tax/jurisdictions", get(get_tax_jurisdictions))
-        .route("/tax/exemptions", get(get_tax_exemptions))
-
-        // Inventory endpoints
-        .route("/inventory/transactions", get(get_inventory_transactions).post(create_inventory_transaction))
-        .route("/inventory/transactions/item/:menu_item_id", get(get_inventory_transactions_for_item))
-
-        // Registry endpoints
-        .route("/registry/entries", get(get_registry_entries).post(create_registry_entry))
-        .route("/registry/entries/:entity_type/:entity_id", get(get_registry_entries_for_entity))
-
-        // CORS middleware
-        .layer(
-            ServiceBuilder::new()
-                .layer(CorsLayer::permissive())
-        )
-        .with_state(app_state);
+    let app_state = web::Data::new(AppState { db_pool });
 
     // Get server configuration
     let host = std::env::var("SERVER_HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
     let port = std::env::var("SERVER_PORT")
-        .unwrap_or_else(|_| "3000".to_string())
+        .unwrap_or_else(|_| "8080".to_string())
         .parse()
         .expect("Invalid port number");
 
-    let addr = SocketAddr::from((host.parse::<std::net::IpAddr>().unwrap(), port));
-
-    tracing::info!("Starting Kipko POS server on {}", addr);
+    let bind_address = format!("{}:{}", host, port);
+    log::info!("Starting Kipko POS server on {}", bind_address);
 
     // Start the server
-    let listener = tokio::net::TcpListener::bind(addr).await?;
-    axum::serve(listener, app).await?;
+    HttpServer::new(move || {
+        let cors = Cors::permissive();
+
+        App::new()
+            .app_data(app_state.clone())
+            .wrap(cors)
+            .wrap(Logger::default())
+            // Health check endpoint
+            .route("/health", web::get().to(health_check))
+            // Tables endpoints
+            .service(
+                web::scope("/tables")
+                    .route("", web::get().to(get_tables))
+                    .route("", web::post().to(create_table))
+                    .route("/{id}", web::get().to(get_table))
+                    .route("/{id}", web::put().to(update_table))
+                    .route("/{id}", web::delete().to(delete_table))
+                    .route("/{id}/occupy", web::post().to(occupy_table))
+                    .route("/{id}/clear", web::post().to(clear_table))
+                    .route("/{id}/clean", web::post().to(clean_table))
+            )
+            // Menu items endpoints
+            .service(
+                web::scope("/menu")
+                    .route("/categories", web::get().to(get_menu_categories))
+                    .route("/items", web::get().to(get_menu_items))
+                    .route("/items", web::post().to(create_menu_item))
+                    .route("/items/{id}", web::get().to(get_menu_item))
+                    .route("/items/{id}", web::put().to(update_menu_item))
+                    .route("/items/{id}", web::delete().to(delete_menu_item))
+            )
+            // Orders endpoints
+            .service(
+                web::scope("/orders")
+                    .route("", web::get().to(get_orders))
+                    .route("", web::post().to(create_order))
+                    .route("/{id}", web::get().to(get_order))
+                    .route("/{id}", web::put().to(update_order))
+                    .route("/{id}", web::delete().to(delete_order))
+                    .route("/{id}/items", web::get().to(handlers::order_items::get_order_items))
+                    .route("/{id}/items", web::post().to(handlers::order_items::add_order_item))
+                    .route("/{id}/items/{item_id}", web::put().to(handlers::order_items::update_order_item))
+                    .route("/{id}/items/{item_id}", web::delete().to(handlers::order_items::delete_order_item))
+                    .route("/{id}/calculate-tax", web::post().to(calculate_order_tax))
+                    .route("/{id}/close", web::post().to(close_order))
+            )
+            // Payments endpoints
+            .service(
+                web::scope("/payments")
+                    .route("", web::get().to(get_payments))
+                    .route("", web::post().to(create_payment))
+                    .route("/{id}", web::get().to(get_payment))
+                    .route("/{id}/complete", web::post().to(handlers::payments::complete_payment))
+            )
+            .service(
+                web::scope("/orders")
+                    .route("/{order_id}/payments", web::get().to(handlers::payments::get_order_payments))
+            )
+            // Customers endpoints
+            .service(
+                web::scope("/customers")
+                    .route("", web::get().to(handlers::customers::get_customers))
+                    .route("", web::post().to(handlers::customers::create_customer))
+                    .route("/{id}", web::get().to(handlers::customers::get_customer))
+                    .route("/{id}", web::put().to(handlers::customers::update_customer))
+            )
+            // Reservations endpoints
+            .service(
+                web::scope("/reservations")
+                    .route("", web::get().to(handlers::reservations::get_reservations))
+                    .route("", web::post().to(handlers::reservations::create_reservation))
+                    .route("/{id}", web::get().to(handlers::reservations::get_reservation))
+                    .route("/{id}", web::put().to(handlers::reservations::update_reservation))
+            )
+            // Staff endpoints
+            .service(
+                web::scope("/staff")
+                    .route("", web::get().to(get_staff))
+                    .route("", web::post().to(create_staff))
+                    .route("/{id}", web::get().to(get_staff_member))
+                    .route("/{id}", web::put().to(update_staff))
+                    .route("/{id}", web::delete().to(delete_staff))
+            )
+            // Accounting endpoints
+            .service(
+                web::scope("/accounting")
+                    .route("/transactions", web::get().to(get_transactions))
+                    .route("/accounts", web::get().to(get_accounts))
+                    .route("/balances", web::get().to(get_account_balances))
+                    .route("/trial-balance", web::get().to(handlers::accounting::get_trial_balance))
+                    .route("/income-statement", web::get().to(handlers::accounting::get_income_statement))
+                    .route("/balance-sheet", web::get().to(handlers::accounting::get_balance_sheet))
+                    .route("/periods", web::get().to(handlers::accounting::get_accounting_periods))
+                    .route("/periods/{id}/close", web::post().to(handlers::accounting::close_accounting_period))
+                    .route("/reconciliations/{account_id}", web::get().to(handlers::accounting::get_bank_reconciliations))
+                    .route("/reconciliations", web::post().to(handlers::accounting::create_bank_reconciliation))
+            )
+            // Tax endpoints
+            .service(
+                web::scope("/tax")
+                    .route("/jurisdictions", web::get().to(get_tax_jurisdictions))
+                    .route("/exemptions", web::get().to(get_tax_exemptions))
+            )
+            // Inventory endpoints
+            .service(
+                web::scope("/inventory")
+                    .route("/transactions", web::get().to(get_inventory_transactions))
+                    .route("/transactions", web::post().to(create_inventory_transaction))
+                    .route("/transactions/item/{menu_item_id}", web::get().to(get_inventory_transactions_for_item))
+            )
+            // Registry endpoints
+            .service(
+                web::scope("/registry")
+                    .route("/entries", web::get().to(get_registry_entries))
+                    .route("/entries", web::post().to(create_registry_entry))
+                    .route("/entries/{entity_type}/{entity_id}", web::get().to(get_registry_entries_for_entity))
+            )
+    })
+    .bind(&bind_address)?
+    .run()
+    .await?;
 
     Ok(())
 }
 
 /// Health check endpoint
-async fn health_check() -> Result<Json<serde_json::Value>, StatusCode> {
-    Ok(Json(serde_json::json!({
+async fn health_check() -> impl Responder {
+    HttpResponse::Ok().json(serde_json::json!({
         "status": "healthy",
         "service": "kipko-pos-server",
         "timestamp": chrono::Utc::now().to_rfc3339()
-    })))
+    }))
 }

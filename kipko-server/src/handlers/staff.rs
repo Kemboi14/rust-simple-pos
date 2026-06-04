@@ -1,11 +1,8 @@
 //! Staff management handlers
 
 use crate::{AppState, ApiResponse};
-use axum::{
-    extract::{Path, State},
-    http::StatusCode,
-    response::Json,
-};
+use actix_web::{web, HttpResponse, Result};
+use tracing::error;
 use serde::Deserialize;
 use sqlx::Row;
 use uuid::Uuid;
@@ -30,22 +27,22 @@ pub struct UpdateStaffRequest {
 
 /// Get all staff members
 pub async fn get_staff(
-    State(state): State<AppState>,
-) -> Result<Json<ApiResponse<Vec<Staff>>>, StatusCode> {
+    state: web::Data<AppState>,
+) -> Result<HttpResponse> {
     let rows = sqlx::query(
         r#"
-        SELECT 
+        SELECT
             id, name, email, role::text, is_active,
             created_at, updated_at
-        FROM staff 
+        FROM staff
         ORDER BY name
         "#
     )
     .fetch_all(&state.db_pool)
     .await
     .map_err(|e| {
-        tracing::error!("Failed to fetch staff: {}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
+        error!("Failed to fetch staff: {}", e);
+        return HttpResponse::InternalServerError().json(serde_json::json!({"error": "Failed to fetch staff"}))
     })?;
 
     let staff: Vec<Staff> = rows.into_iter().map(|row| Staff {
@@ -65,20 +62,22 @@ pub async fn get_staff(
         updated_at: row.get("updated_at"),
     }).collect();
 
-    Ok(Json(ApiResponse::success(staff)))
+    Ok(HttpResponse::Ok().json(ApiResponse::success(staff)))
 }
 
 /// Get a single staff member by ID
 pub async fn get_staff_member(
-    State(state): State<AppState>,
-    Path(id): Path<Uuid>,
-) -> Result<Json<ApiResponse<Staff>>, StatusCode> {
+    state: web::Data<AppState>,
+    path: web::Path<Uuid>,
+) -> Result<HttpResponse> {
+    let id = path.into_inner();
+
     let row = sqlx::query(
         r#"
-        SELECT 
+        SELECT
             id, name, email, role::text, is_active,
             created_at, updated_at
-        FROM staff 
+        FROM staff
         WHERE id = $1
         "#
     )
@@ -86,8 +85,8 @@ pub async fn get_staff_member(
     .fetch_optional(&state.db_pool)
     .await
     .map_err(|e| {
-        tracing::error!("Failed to fetch staff member: {}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
+        error!("Failed to fetch staff member: {}", e);
+        return HttpResponse::InternalServerError().json(serde_json::json!({"error": "Failed to fetch staff member"}))
     })?;
 
     match row {
@@ -108,22 +107,22 @@ pub async fn get_staff_member(
                 created_at: row.get("created_at"),
                 updated_at: row.get("updated_at"),
             };
-            Ok(Json(ApiResponse::success(staff)))
+            Ok(HttpResponse::Ok().json(ApiResponse::success(staff)))
         },
-        None => Err(StatusCode::NOT_FOUND),
+        None => Ok(HttpResponse::NotFound().json(serde_json::json!({"error": "Staff member not found"}))),
     }
 }
 
 /// Create a new staff member
 pub async fn create_staff(
-    State(state): State<AppState>,
-    Json(request): Json<CreateStaffRequest>,
-) -> Result<Json<ApiResponse<Staff>>, StatusCode> {
+    state: web::Data<AppState>,
+    request: web::Json<CreateStaffRequest>,
+) -> Result<HttpResponse> {
     let row = sqlx::query(
         r#"
         INSERT INTO staff (name, email, role)
         VALUES ($1, $2, $3)
-        RETURNING 
+        RETURNING
             id, name, email, role::text, is_active,
             created_at, updated_at
         "#
@@ -134,8 +133,8 @@ pub async fn create_staff(
     .fetch_one(&state.db_pool)
     .await
     .map_err(|e| {
-        tracing::error!("Failed to create staff member: {}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
+        error!("Failed to create staff member: {}", e);
+        return HttpResponse::InternalServerError().json(serde_json::json!({"error": "Failed to create staff member"}))
     })?;
 
     let staff = Staff {
@@ -155,26 +154,28 @@ pub async fn create_staff(
         updated_at: row.get("updated_at"),
     };
 
-    Ok(Json(ApiResponse::success(staff)))
+    Ok(HttpResponse::Ok().json(ApiResponse::success(staff)))
 }
 
 /// Update a staff member
 pub async fn update_staff(
-    State(state): State<AppState>,
-    Path(id): Path<Uuid>,
-    Json(request): Json<UpdateStaffRequest>,
-) -> Result<Json<ApiResponse<Staff>>, StatusCode> {
+    state: web::Data<AppState>,
+    path: web::Path<Uuid>,
+    request: web::Json<UpdateStaffRequest>,
+) -> Result<HttpResponse> {
+    let id = path.into_inner();
+
     let row = sqlx::query(
         r#"
-        UPDATE staff 
-        SET 
+        UPDATE staff
+        SET
             name = COALESCE($2, name),
             email = COALESCE($3, email),
             role = COALESCE($4, role),
             is_active = COALESCE($5, is_active),
             updated_at = CURRENT_TIMESTAMP
         WHERE id = $1
-        RETURNING 
+        RETURNING
             id, name, email, role::text, is_active,
             created_at, updated_at
         "#
@@ -187,8 +188,8 @@ pub async fn update_staff(
     .fetch_optional(&state.db_pool)
     .await
     .map_err(|e| {
-        tracing::error!("Failed to update staff member: {}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
+        error!("Failed to update staff member: {}", e);
+        return HttpResponse::InternalServerError().json(serde_json::json!({"error": "Failed to update staff member"}))
     })?;
 
     match row {
@@ -209,17 +210,19 @@ pub async fn update_staff(
                 created_at: row.get("created_at"),
                 updated_at: row.get("updated_at"),
             };
-            Ok(Json(ApiResponse::success(staff)))
+            Ok(HttpResponse::Ok().json(ApiResponse::success(staff)))
         },
-        None => Err(StatusCode::NOT_FOUND),
+        None => Ok(HttpResponse::NotFound().json(serde_json::json!({"error": "Staff member not found"}))),
     }
 }
 
 /// Delete a staff member
 pub async fn delete_staff(
-    State(state): State<AppState>,
-    Path(id): Path<Uuid>,
-) -> Result<StatusCode, StatusCode> {
+    state: web::Data<AppState>,
+    path: web::Path<Uuid>,
+) -> Result<HttpResponse> {
+    let id = path.into_inner();
+
     let result = sqlx::query(
         "DELETE FROM staff WHERE id = $1"
     )
@@ -227,13 +230,13 @@ pub async fn delete_staff(
     .execute(&state.db_pool)
     .await
     .map_err(|e| {
-        tracing::error!("Failed to delete staff member: {}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
+        error!("Failed to delete staff member: {}", e);
+        return HttpResponse::InternalServerError().json(serde_json::json!({"error": "Failed to delete staff member"}))
     })?;
 
     if result.rows_affected() > 0 {
-        Ok(StatusCode::NO_CONTENT)
+        Ok(HttpResponse::NoContent().finish())
     } else {
-        Err(StatusCode::NOT_FOUND)
+        Ok(HttpResponse::NotFound().json(serde_json::json!({"error": "Staff member not found"})))
     }
 }

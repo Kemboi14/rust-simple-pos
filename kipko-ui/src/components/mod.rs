@@ -1,9 +1,5 @@
-//! Components module for the Kipko POS UI
-//! 
-//! This module contains reusable UI components.
-
-pub mod common;
-pub mod forms;
+pub mod navigation;
 pub mod layout;
 
-pub use common::*;
+pub use navigation::Navigation;
+pub use layout::Layout;

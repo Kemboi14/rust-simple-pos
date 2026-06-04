@@ -1,11 +1,9 @@
 //! Payment management handlers
 
 use crate::{AppState, ApiResponse};
-use axum::{
-    extract::{Path, State},
-    http::StatusCode,
-    response::Json,
-};
+use crate::services::accounting_service::AccountingService;
+use actix_web::{web, HttpResponse, Result};
+use tracing::error;
 use serde::Deserialize;
 use sqlx::Row;
 use uuid::Uuid;
@@ -22,8 +20,8 @@ pub struct CreatePaymentRequest {
 
 /// Get all payments
 pub async fn get_payments(
-    State(state): State<AppState>,
-) -> Result<Json<ApiResponse<Vec<Payment>>>, StatusCode> {
+    state: web::Data<AppState>,
+) -> Result<HttpResponse> {
     let rows = sqlx::query(
         r#"
         SELECT
@@ -36,7 +34,7 @@ pub async fn get_payments(
     .await
     .map_err(|e| {
         tracing::error!("Failed to fetch payments: {}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
+        return HttpResponse::InternalServerError().json(serde_json::json!({"error": "Failed to fetch payments"}))
     })?;
 
     let payments: Vec<Payment> = rows.into_iter().map(|row| Payment {
@@ -62,14 +60,16 @@ pub async fn get_payments(
         updated_at: row.get("updated_at"),
     }).collect();
 
-    Ok(Json(ApiResponse::success(payments)))
+    Ok(HttpResponse::Ok().json(ApiResponse::success(payments)))
 }
 
 /// Get a single payment by ID
 pub async fn get_payment(
-    State(state): State<AppState>,
-    Path(id): Path<Uuid>,
-) -> Result<Json<ApiResponse<Payment>>, StatusCode> {
+    state: web::Data<AppState>,
+    path: web::Path<Uuid>,
+) -> Result<HttpResponse> {
+    let id = path.into_inner();
+
     let row = sqlx::query(
         r#"
         SELECT
@@ -82,8 +82,8 @@ pub async fn get_payment(
     .fetch_optional(&state.db_pool)
     .await
     .map_err(|e| {
-        tracing::error!("Failed to fetch payment: {}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
+        error!("Failed to fetch payment: {}", e);
+        return HttpResponse::InternalServerError().json(serde_json::json!({"error": "Failed to fetch payment"}))
     })?;
 
     match row {
@@ -110,22 +110,24 @@ pub async fn get_payment(
                 created_at: row.get("created_at"),
                 updated_at: row.get("updated_at"),
             };
-            Ok(Json(ApiResponse::success(payment)))
+            Ok(HttpResponse::Ok().json(ApiResponse::success(payment)))
         }
-        None => Err(StatusCode::NOT_FOUND),
+        None => Ok(HttpResponse::NotFound().json(serde_json::json!({"error": "Payment not found"}))),
     }
 }
 
 /// Get payments for a specific order
 pub async fn get_order_payments(
-    State(state): State<AppState>,
-    Path(order_id): Path<Uuid>,
-) -> Result<Json<ApiResponse<Vec<Payment>>>, StatusCode> {
+    state: web::Data<AppState>,
+    path: web::Path<Uuid>,
+) -> Result<HttpResponse> {
+    let order_id = path.into_inner();
+
     let rows = sqlx::query(
         r#"
-        SELECT 
+        SELECT
             id, order_id, amount, method, status, transaction_id, created_at, updated_at
-        FROM payments 
+        FROM payments
         WHERE order_id = $1
         ORDER BY created_at DESC
         "#
@@ -134,8 +136,8 @@ pub async fn get_order_payments(
     .fetch_all(&state.db_pool)
     .await
     .map_err(|e| {
-        tracing::error!("Failed to fetch order payments: {}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
+        error!("Failed to fetch order payments: {}", e);
+        return HttpResponse::InternalServerError().json(serde_json::json!({"error": "Failed to fetch order payments"}))
     })?;
 
     let payments: Vec<Payment> = rows.into_iter().map(|row| Payment {
@@ -161,19 +163,19 @@ pub async fn get_order_payments(
         updated_at: row.get("updated_at"),
     }).collect();
 
-    Ok(Json(ApiResponse::success(payments)))
+    Ok(HttpResponse::Ok().json(ApiResponse::success(payments)))
 }
 
 /// Create a new payment
 pub async fn create_payment(
-    State(state): State<AppState>,
-    Json(request): Json<CreatePaymentRequest>,
-) -> Result<Json<ApiResponse<Payment>>, StatusCode> {
+    state: web::Data<AppState>,
+    request: web::Json<CreatePaymentRequest>,
+) -> Result<HttpResponse> {
     let row = sqlx::query(
         r#"
         INSERT INTO payments (order_id, amount, method, status, transaction_id)
         VALUES ($1, $2, $3, 'Pending', $4)
-        RETURNING 
+        RETURNING
             id, order_id, amount, method, status, transaction_id, created_at, updated_at
         "#
     )
@@ -184,8 +186,8 @@ pub async fn create_payment(
     .fetch_one(&state.db_pool)
     .await
     .map_err(|e| {
-        tracing::error!("Failed to create payment: {}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
+        error!("Failed to create payment: {}", e);
+        return HttpResponse::InternalServerError().json(serde_json::json!({"error": "Failed to create payment"}))
     })?;
 
     let payment = Payment {
@@ -205,7 +207,7 @@ pub async fn create_payment(
         updated_at: row.get("updated_at"),
     };
 
-    Ok(Json(ApiResponse::success(payment)))
+    Ok(HttpResponse::Ok().json(ApiResponse::success(payment)))
 }
 
 /// Complete a payment
@@ -223,7 +225,7 @@ pub async fn complete_payment(
         UPDATE payments
         SET status = 'Completed', transaction_id = $2, updated_at = CURRENT_TIMESTAMP
         WHERE id = $1
-        RETURNING 
+        RETURNING
             id, order_id, amount, method, status, transaction_id, created_at, updated_at
         "#
     )
@@ -235,6 +237,18 @@ pub async fn complete_payment(
         tracing::error!("Failed to complete payment: {}", e);
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
+
+    let payment_id: Uuid = row.get("id");
+    let order_id: Uuid = row.get("order_id");
+    let payment_amount: rust_decimal::Decimal = row.get("amount");
+    let payment_method: String = row.get("method");
+
+    // Create accounting entries for the payment
+    let accounting_service = AccountingService::new(state.db_pool.clone());
+    if let Err(e) = accounting_service.create_payment_accounting_entries(payment_id, payment_amount, &payment_method).await {
+        tracing::error!("Failed to create accounting entries for payment: {}", e);
+        // Don't fail the payment if accounting fails, but log it
+    }
 
     let payment = Payment {
         id: row.get("id"),

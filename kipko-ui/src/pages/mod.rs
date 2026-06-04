@@ -1,29 +1,17 @@
-//! Pages module for the Kipko POS UI
-//!
-//! This module contains all the main pages/components of the application.
-
-pub mod floorplan;
-pub mod menu;
+pub mod floor_plan;
 pub mod orders;
-pub mod staff;
+pub mod menu;
 pub mod inventory;
-pub mod registry;
 pub mod customers;
-pub mod reservations;
-pub mod kitchen;
+pub mod staff;
 pub mod reports;
-pub mod login;
-pub mod discounts;
+pub mod accounting;
 
-pub use floorplan::FloorPlan;
-pub use menu::Menu;
+pub use floor_plan::FloorPlan;
 pub use orders::Orders;
-pub use staff::StaffPage;
-pub use inventory::InventoryPage;
-pub use registry::RegistryPage;
-pub use customers::CustomersPage;
-pub use reservations::ReservationsPage;
-pub use kitchen::KitchenPage;
-pub use reports::ReportsPage;
-pub use login::LoginPage;
-pub use discounts::DiscountsPage;
+pub use menu::Menu;
+pub use inventory::Inventory;
+pub use customers::Customers;
+pub use staff::Staff;
+pub use reports::Reports;
+pub use accounting::Accounting;
